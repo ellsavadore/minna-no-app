@@ -426,8 +426,14 @@ function studentSheet(s) {
     ${['k', 'j', 'b'].map(k => `<div class="optrow"><span>${DECKS[k].name}</span><b>${m[k] || 0} / ${tot[k] || '–'}</b></div>`).join('')}
     <div class="section" style="margin-left:2px">Riwayat</div>
     ${days.slice().reverse().filter(d => (s.days || {})[d]).slice(0, 10).map(d => { const r = s.days[d]; return `<div class="optrow"><span>${new Date(d + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</span><span style="color:var(--ink2);font-size:14px">${r.n || 0} kartu · ${Math.round((r.ms || 0) / 60000)} mnt · ${['k', 'j', 'b'].map(k => (r[k] && r[k][0] >= r[k][1] && r[k][1] ? '✓' : '·') + DECKS[k].ico).join(' ')}</span></div>`; }).join('') || '<div class="empty">Belum ada aktivitas.</div>'}
-    <button class="btn ghost" style="margin-top:14px" data-close>Tutup</button></div>`;
-  document.body.appendChild(bg); bg.onclick = e => { if (e.target === bg || e.target.closest('[data-close]')) bg.remove(); };
+    <button class="btn ghost" style="margin-top:14px" data-close>Tutup</button>
+    <button class="btn ghost" style="margin-top:10px;color:#e5484d" data-del>Hapus siswa ini</button></div>`;
+  document.body.appendChild(bg); bg.onclick = async e => {
+    if (e.target === bg || e.target.closest('[data-close]')) return bg.remove();
+    if (e.target.closest('[data-del]') && confirm('Hapus ' + (s.name || 'siswa') + ' beserta semua progresnya?')) {
+      try { await api('admin', { action: 'delete', id: s.id }, { 'x-admin-pass': adminPass() }); bg.remove(); AD = null; toast('Siswa dihapus'); renderAdmin(); } catch (err) { toast(err.message); }
+    }
+  };
 }
 function configSheet(cfg) {
   const bg = document.createElement('div'); bg.className = 'sheetBg';

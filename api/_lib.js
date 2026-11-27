@@ -1,4 +1,4 @@
-const { put, head, list, BlobNotFoundError } = require('@vercel/blob');
+const { put, head, list, del, BlobNotFoundError } = require('@vercel/blob');
 const crypto = require('crypto');
 
 const SECRET = process.env.APP_SECRET || process.env.ADMIN_PASSWORD || 'minna';
@@ -70,4 +70,6 @@ function mergeDays(a = {}, b = {}) {
   return out;
 }
 
-module.exports = { readJSON, writeJSON, listJSON, body, send, isAdmin, hkey, rid, clip, mergeDays, DEFAULT_CONFIG };
+async function removeJSON(pathname) { try { const h = await head(pathname); await del(h.url); } catch (e) { if (!(e instanceof BlobNotFoundError)) throw e; } }
+
+module.exports = { removeJSON, readJSON, writeJSON, listJSON, body, send, isAdmin, hkey, rid, clip, mergeDays, DEFAULT_CONFIG };
