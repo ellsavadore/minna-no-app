@@ -179,17 +179,17 @@ function renderHome() {
       <div class="ring"><svg width="96" height="96"><circle cx="48" cy="48" r="42" stroke="var(--fill)" stroke-width="10" fill="none"/>
         <circle cx="48" cy="48" r="42" stroke="url(#g)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}" style="transition:stroke-dashoffset .8s"/>
         <defs><linearGradient id="g"><stop offset="0" stop-color="#40d2c6"/><stop offset="1" stop-color="#087f86"/></linearGradient></defs></svg><b>${pct}%</b></div>
-      <div><h3>${pct >= 100 ? 'Tugas hari ini selesai! 🎉' : 'Tugas Fukushu Hari Ini'}</h3>
+      <div><h3>${pct >= 100 ? 'Tugas hari ini selesai' : 'Tugas Fukushu Hari Ini'}</h3>
       <p>${pct >= 100 ? 'すごい！ Kamu hebat. Sampai jumpa besok ya.' : 'Selesaikan Kotoba, Kanji, dan Pola Kalimat untuk menjaga streak 🔥'}</p>
       <p style="margin-top:6px"><span class="pill p">${esc(LEVEL_NAME[lv])}</span></p></div>
     </div>
     <div class="section">Tugas Hari Ini</div>
-    ${parts.map(p => { const D = DECKS[p.dk]; const ok = p.tot > 0 && p.done >= p.tot; return `<button class="card task" data-task="${p.dk}">
+    ${parts.map(p => { const D = DECKS[p.dk]; const ok = p.tot > 0 && p.done >= p.tot; return `<button class="card task ${ok ? 'complete' : ''}" data-task="${p.dk}">
       <div class="tico ${D.cls}">${D.ico}</div>
       <div style="flex:1;min-width:0"><div class="tt">${D.name} <span class="jp" style="color:var(--ink3);font-weight:500;font-size:14px">${D.jp}</span></div>
-      <div class="ts">${ok ? 'Selesai · ' + p.tot + ' kartu' : p.done + ' / ' + p.tot + ' kartu'}</div>
+      <div class="ts">${ok ? '<span class="donepill">完了 · Selesai</span> ' + p.tot + ' kartu' : p.done + ' / ' + p.tot + ' kartu'}</div>
       <div class="mini"><i style="width:${p.tot ? 100 * p.done / p.tot : 0}%"></i></div></div>
-      <div class="check ${ok ? 'done' : ''}">${ok ? I.check : ''}</div></button>`; }).join('')}
+      <div class="check ${ok ? 'ok' : ''}">${ok ? I.check : ''}</div></button>`; }).join('')}
     <div class="section">7 Hari Terakhir</div>
     <div class="card week">${days.map(d => { const full = allDone(d), part = anyDone(d); return `<div class="${d === todayKey() ? 'tdy' : ''}"><i class="${full ? 'full' : part ? 'part' : ''}">${full ? '✓' : part ? '•' : ''}</i>${dn[new Date(d + 'T12:00:00').getDay()]}</div>`; }).join('')}</div>
   </div>`;
@@ -376,7 +376,7 @@ function drawDone() {
   recordProgress(); const el = document.getElementById('study'); const tot = ST.idx.length; const pct = Math.round(100 * ST.yes / tot);
   const all = ST.daily && allDone(todayKey());
   el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq">${I.x}</button></div>
-    <div class="done"><div class="emoji">${pct >= 80 ? '🎐' : pct >= 50 ? '✨' : '💪'}</div>
+    <div class="finish"><div class="emoji">${pct >= 80 ? '🎐' : pct >= 50 ? '✨' : '💪'}</div>
     <h2 class="jp">${pct >= 80 ? 'よくできました！' : pct >= 50 ? 'いいですね！' : 'がんばって！'}</h2>
     <p>${ST.yes} hafal · ${ST.no} belum hafal dari ${tot} kartu</p>
     ${all ? '<p style="color:var(--green);font-weight:800">Semua tugas hari ini selesai! 🔥</p>' : ''}

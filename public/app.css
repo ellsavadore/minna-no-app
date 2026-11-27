@@ -85,8 +85,12 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .t-k{background:var(--accentSoft);color:var(--accent)}.t-j{background:var(--violetSoft);color:var(--violet)}.t-b{background:var(--blueSoft);color:var(--blue)}
 .task .tt{font-weight:700;font-size:17px}
 .task .ts{color:var(--ink2);font-size:13.5px;margin-top:2px}
-.check{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;flex:none;transition:all .3s}
-.check.done{background:var(--green);border-color:var(--green);color:#fff}
+.check{width:30px;height:30px;min-width:30px;max-width:30px;aspect-ratio:1;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;flex:0 0 30px;transition:all .3s}
+.check.ok{background:linear-gradient(135deg,#2cc8bd,#087f86);border-color:transparent;color:#fff;box-shadow:0 6px 14px rgba(8,127,134,.28);animation:pop .45s cubic-bezier(.2,1.5,.4,1)}
+.check.ok svg{width:15px;height:15px}
+.task.complete{background:linear-gradient(135deg,color-mix(in srgb,var(--solid) 88%,transparent),color-mix(in srgb,var(--accentSoft) 80%,transparent));border-color:color-mix(in srgb,var(--accent) 25%,var(--line))}
+.task.complete .mini i{background:linear-gradient(90deg,#2cc8bd,#087f86)}
+.donepill{display:inline-block;font-size:11.5px;font-weight:800;color:var(--deep);background:var(--accentSoft);padding:2px 8px;border-radius:99px;margin-right:4px;letter-spacing:.02em}
 .chev{color:var(--ink3);flex:none}
 .mini{height:6px;border-radius:9px;background:var(--fill);overflow:hidden;margin-top:8px}
 .mini i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .6s ease}
@@ -161,10 +165,10 @@ button{cursor:pointer;border:0;background:none;padding:0}
 @keyframes flyR{to{transform:translateX(130%) rotate(14deg);opacity:0}}
 .enter{animation:enter .35s cubic-bezier(.2,.9,.3,1.2)}
 @keyframes enter{from{transform:scale(.9) translateY(20px);opacity:0}}
-.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
-.done .emoji{font-size:72px;animation:pop .6s cubic-bezier(.2,1.5,.4,1)}
+.finish{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.finish .emoji{font-size:72px;animation:pop .6s cubic-bezier(.2,1.5,.4,1)}
 @keyframes pop{from{transform:scale(0)}}
-.done h2{margin:6px 0 0;font-size:28px}.done p{color:var(--ink2);margin:0 0 10px}
+.finish h2{margin:6px 0 0;font-size:28px}.finish p{color:var(--ink2);margin:0 0 10px}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:50;overflow:hidden}
 .confetti i{position:absolute;top:-20px;width:9px;height:14px;border-radius:3px;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
