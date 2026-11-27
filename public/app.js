@@ -1,4 +1,4 @@
-/* みんなを愛している — Flashcard Fukushu */
+/* みんなの復習 — Flashcard Fukushu */
 (() => {
 'use strict';
 const LEVELS = ['A1', 'A2.1', 'A2.2'];
@@ -133,8 +133,8 @@ function renderOnboard() {
   let lv = 'A1';
   $app.innerHTML = `<div class="hero">
     <div class="appicon">愛</div>
-    <h1 class="appname">みんなを愛している</h1>
-    <p class="romaji">MINNA WO AISHITEIRU</p>
+    <h1 class="appname">みんなの復習</h1>
+    <p class="romaji">MINNA NO FUKUSHU</p><div class="rule"></div>
     <form class="card formcard" id="reg" autocomplete="on">
       <label class="field"><span>Nama lengkap</span><input class="input" name="name" required maxlength="60" placeholder="Nama kamu" autocomplete="name"></label>
       <label class="field"><span>Email</span><input class="input" name="email" type="email" required maxlength="120" placeholder="nama@email.com" autocomplete="email" inputmode="email"></label>
@@ -156,7 +156,7 @@ function renderOnboard() {
       const r = await api('register', { name, email, level: lv });
       S.user = { id: r.id, token: r.token, name: r.name || name, email, level: r.existing && r.level ? r.level : lv };
       if (r.days) for (const d in r.days) S.days[d] ||= r.days[d];
-      save(); toast(r.existing ? 'Selamat datang kembali, ' + S.user.name + '!' : 'おかえり! Pendaftaran berhasil 🎉'); go('home');
+      save(); toast(r.existing ? 'おかえり, ' + S.user.name + '!' : 'ようこそ! Pendaftaran berhasil'); go('home');
     } catch (err) { document.getElementById('err').textContent = err.message === 'Failed to fetch' ? 'Tidak ada koneksi internet.' : err.message; btn.disabled = false; btn.textContent = 'Daftar & Mulai Belajar'; }
   };
 }
@@ -177,7 +177,7 @@ function renderHome() {
     <div class="card today">
       <div class="ring"><svg width="96" height="96"><circle cx="48" cy="48" r="42" stroke="var(--fill)" stroke-width="10" fill="none"/>
         <circle cx="48" cy="48" r="42" stroke="url(#g)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}" style="transition:stroke-dashoffset .8s"/>
-        <defs><linearGradient id="g"><stop offset="0" stop-color="#ff8fb4"/><stop offset="1" stop-color="#ff4f8b"/></linearGradient></defs></svg><b>${pct}%</b></div>
+        <defs><linearGradient id="g"><stop offset="0" stop-color="#40d2c6"/><stop offset="1" stop-color="#087f86"/></linearGradient></defs></svg><b>${pct}%</b></div>
       <div><h3>${pct >= 100 ? 'Tugas hari ini selesai! 🎉' : 'Tugas Fukushu Hari Ini'}</h3>
       <p>${pct >= 100 ? 'すごい！ Kamu hebat. Sampai jumpa besok ya.' : 'Selesaikan Kotoba, Kanji, dan Pola Kalimat untuk menjaga streak 🔥'}</p>
       <p style="margin-top:6px"><span class="pill p">${esc(LEVEL_NAME[lv])}</span></p></div>
@@ -206,7 +206,7 @@ function renderDecks() {
   deckLevel ||= S.user.level; const lv = deckLevel;
   if (!DATA[lv]) { $app.innerHTML = '<div class="spin"></div>'; getData(lv).then(render); return; }
   $app.innerHTML = `<div class="screen">
-    <h1 class="largeTitle">Flashcard</h1><p class="sub">Semua kartu dikelompokkan per level.</p>
+    <p class="brand">みんなの復習</p><h1 class="largeTitle">Flashcard</h1><p class="sub">Semua kartu dikelompokkan per level.</p>
     <div class="seg" id="lvs" style="margin-bottom:18px">${LEVELS.map(l => `<button data-l="${l}" class="${l === lv ? 'on' : ''}">${l}</button>`).join('')}</div>
     ${['k', 'j', 'b'].map(dk => { const D = DECKS[dk], s = deckStats(lv, dk); return `<button class="card deck" data-deck="${dk}">
       <div class="row"><div class="tico ${D.cls}">${D.ico}</div><div style="flex:1"><div class="tt">${D.name}</div><div class="ts">${esc(LEVEL_NAME[lv])} · ${s.n} ${D.unit}</div></div><span class="chev">${I.chev}</span></div>
@@ -254,7 +254,7 @@ function renderMe() {
   for (const k in S.cards) if (S.cards[k].s === 1) tm++;
   const daysActive = Object.keys(S.days).filter(anyDone).length;
   $app.innerHTML = `<div class="screen">
-    <h1 class="largeTitle">Profil</h1><p class="sub">Data belajarmu tersimpan dan dipantau oleh sensei.</p>
+    <p class="brand">みんなの復習</p><h1 class="largeTitle">Profil</h1><p class="sub">Data belajarmu tersimpan dan dipantau oleh sensei.</p>
     <div class="card" style="padding:18px"><div class="row"><div class="avatar" style="width:58px;height:58px;font-size:22px">${esc(u.name[0].toUpperCase())}</div>
       <div style="min-width:0"><div style="font-weight:800;font-size:19px">${esc(u.name)}</div><div class="sub" style="margin:2px 0 0;overflow:hidden;text-overflow:ellipsis">${esc(u.email)}</div></div></div>
       <div class="stats3"><div><b>🔥 ${streak()}</b><small>Streak</small></div><div><b>${tm}</b><small>Kartu hafal</small></div><div><b>${daysActive}</b><small>Hari aktif</small></div></div></div>
@@ -268,7 +268,7 @@ function renderMe() {
       <div class="optrow">Ucapkan otomatis (suara Jepang)<button class="switch ${S.prefs.auto ? 'on' : ''}" data-p="auto"></button></div>
     </div>
     <button class="btn ghost" id="out" style="margin-top:22px;color:#e5484d">Keluar</button>
-    <p class="sub" style="text-align:center;margin-top:18px;font-size:12.5px">みんなを愛している · Materi: IRODORI ©The Japan Foundation</p>
+    <p class="sub" style="text-align:center;margin-top:18px;font-size:12.5px">みんなの復習 · Materi: IRODORI ©The Japan Foundation</p>
   </div>`;
   document.getElementById('lvp').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.user.level = b.dataset.l; save(); queueSync(); getData(b.dataset.l).then(render); };
   $app.querySelectorAll('[data-p]').forEach(sw => sw.onclick = () => { S.prefs[sw.dataset.p] = !S.prefs[sw.dataset.p]; sw.classList.toggle('on'); save(); });
@@ -375,7 +375,7 @@ function drawDone() {
   recordProgress(); const el = document.getElementById('study'); const tot = ST.idx.length; const pct = Math.round(100 * ST.yes / tot);
   const all = ST.daily && allDone(todayKey());
   el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq">${I.x}</button></div>
-    <div class="done"><div class="emoji">${pct >= 80 ? '🌸' : pct >= 50 ? '✨' : '💪'}</div>
+    <div class="done"><div class="emoji">${pct >= 80 ? '🎐' : pct >= 50 ? '✨' : '💪'}</div>
     <h2 class="jp">${pct >= 80 ? 'よくできました！' : pct >= 50 ? 'いいですね！' : 'がんばって！'}</h2>
     <p>${ST.yes} hafal · ${ST.no} belum hafal dari ${tot} kartu</p>
     ${all ? '<p style="color:var(--green);font-weight:800">Semua tugas hari ini selesai! 🔥</p>' : ''}
@@ -388,7 +388,7 @@ function drawDone() {
 }
 function confetti(big) {
   if (!big) return; const c = document.createElement('div'); c.className = 'confetti';
-  const cols = ['#ff4f8b', '#ff8fb4', '#8b7cf6', '#22c38e', '#ffb84d', '#3d9bff'];
+  const cols = ['#0aa39c', '#40d2c6', '#087f86', '#9be8df', '#ffffff', '#1596bf'];
   for (let i = 0; i < 70; i++) { const p = document.createElement('i'); p.style.left = Math.random() * 100 + 'vw'; p.style.background = cols[i % cols.length]; p.style.animationDuration = 1.8 + Math.random() * 1.8 + 's'; p.style.animationDelay = Math.random() * .4 + 's'; p.style.transform = `rotate(${Math.random() * 360}deg)`; c.appendChild(p); }
   document.body.appendChild(c); setTimeout(() => c.remove(), 4200);
 }
