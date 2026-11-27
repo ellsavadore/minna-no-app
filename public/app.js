@@ -341,7 +341,7 @@ function drawStudy() {
   // swipe (touch + mouse) with direction lock, velocity and stamps
   fc.addEventListener('animationend', () => fc.classList.remove('enter'), { once: true });
   const stL = el.querySelector('.stamp.l'), stR = el.querySelector('.stamp.r');
-  let sx = null, sy = 0, dx = 0, dy = 0, lock = null, t0 = 0, busy = false;
+  let sx = null, sy = 0, dx = 0, dy = 0, lock = null, t0 = 0, busy = false, inUI = false;
   const base = () => '';
   const paint = () => {
     fc.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)${base()}`;
@@ -353,7 +353,9 @@ function drawStudy() {
   const start = (x, y) => { if (busy) return; sx = x; sy = y; dx = dy = 0; lock = null; t0 = performance.now(); fc.style.transition = 'none'; };
   const move = (x, y) => {
     if (sx === null) return false; dx = x - sx; dy = y - sy;
-    if (!lock && Math.hypot(dx, dy) > 8) lock = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'x' : 'y';
+    if (!lock && Math.hypot(dx, dy) > 8) lock = Math.abs(dx) >= Math.abs(dy) * 0.7 ? 'x' : 'y';
+    // a gesture that began as a scroll can still become a swipe once it is clearly sideways (long Pola cards)
+    if (lock === 'y' && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 0.9) lock = 'x';
     if (lock === 'x') { paint(); return true; }
     return false;
   };
@@ -366,14 +368,15 @@ function drawStudy() {
       (dx > 0 ? stR : stL).style.opacity = 1;
       return answer(dx > 0, true);
     }
-    reset(); if (!lock) flip();
+    reset(); if (!lock && !inUI) flip();
   };
-  const skip = t => t.closest && t.closest('[data-say],summary,details[open]');
-  fc.addEventListener('touchstart', e => { if (e.touches.length === 1 && !skip(e.target)) start(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+  const skip = t => t.closest && t.closest('[data-say]');
+  const ui = t => !!(t.closest && t.closest('summary,details[open]'));
+  fc.addEventListener('touchstart', e => { if (e.touches.length === 1 && !skip(e.target)) { inUI = ui(e.target); start(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: true });
   fc.addEventListener('touchmove', e => { if (move(e.touches[0].clientX, e.touches[0].clientY) && e.cancelable) e.preventDefault(); }, { passive: false });
-  fc.addEventListener('touchend', e => { if (sx === null) return; if (e.cancelable) e.preventDefault(); end(); }, { passive: false });
+  fc.addEventListener('touchend', e => { if (sx === null) return; if (e.cancelable && (lock || !inUI)) e.preventDefault(); end(); }, { passive: false });
   fc.addEventListener('touchcancel', () => { sx = null; reset(); });
-  fc.addEventListener('mousedown', e => { if (skip(e.target)) return; start(e.clientX, e.clientY); const mm = ev => move(ev.clientX, ev.clientY); const mu = () => { window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); end(); }; window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); });
+  fc.addEventListener('mousedown', e => { if (skip(e.target)) return; inUI = ui(e.target); start(e.clientX, e.clientY); const mm = ev => move(ev.clientX, ev.clientY); const mu = () => { window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); end(); }; window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); });
 }
 function answer(ok, swiped) {
   if (!ST) return; const fc = document.getElementById('fc'); const i = ST.idx[ST.i];
