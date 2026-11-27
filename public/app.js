@@ -306,8 +306,8 @@ function drawStudy() {
   const D = DECKS[ST.dk];
   el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq" aria-label="Tutup">${I.x}</button><div class="pbar"><i style="width:${100 * ST.i / total}%"></i></div><div class="counter">${ST.i + 1} / ${total}</div></div>
     <div class="tally"><span class="l">${ST.no} belum</span><span style="color:var(--ink3);font-weight:600">${esc(ST.title)}</span><span class="r">${ST.yes} hafal</span></div>
-    <div class="stage"><div class="fc enter" id="fc">
-      <div class="face front"><span class="tag">${D.name}</span><button class="iconbtn say" data-say>${I.spk}</button><div class="inner">${faceHTML(c, 'front')}</div><div class="hint">Ketuk untuk membalik</div></div>
+    <div class="stage"><span class="stamp l">BELUM</span><span class="stamp r">HAFAL</span><div class="fc enter" id="fc">
+      <div class="face front"><span class="tag">${D.name}</span><button class="iconbtn say" data-say>${I.spk}</button><div class="inner">${faceHTML(c, 'front')}</div><div class="hint">Ketuk untuk membalik · geser ← belum / hafal →</div></div>
       <div class="face back"><span class="tag">${D.name}</span><button class="iconbtn say" data-say>${I.spk}</button><div class="inner">${faceHTML(c, 'back')}</div></div>
     </div></div>
     <div class="actions"><button class="abtn no" id="bn">✕ Belum</button><button class="abtn flipb" id="bf" aria-label="Balik">${I.flip}</button><button class="abtn yes" id="by">✓ Hafal</button></div>`;
@@ -318,25 +318,52 @@ function drawStudy() {
   el.querySelectorAll('[data-say]').forEach(b => b.onclick = e => { e.stopPropagation(); speak(sayText); });
   document.getElementById('xq').onclick = () => { if (ST.i > 0) recordProgress(); closeStudy(); };
   document.getElementById('bf').onclick = flip;
-  document.getElementById('bn').onclick = () => answer(false);
-  document.getElementById('by').onclick = () => answer(true);
-  // swipe + tap
-  let sx = null, sy = 0, dx = 0, moved = false;
-  fc.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; dx = 0; moved = false; fc.style.transition = 'none'; });
-  fc.addEventListener('pointermove', e => { if (sx === null) return; dx = e.clientX - sx; if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - sy)) { moved = true; fc.style.transform = `translateX(${dx}px) rotate(${dx / 22}deg)${ST.flipped ? ' rotateY(180deg)' : ''}`; fc.classList.toggle('swipeR', dx > 60); fc.classList.toggle('swipeL', dx < -60); } });
-  const end = () => { if (sx === null) return; sx = null; fc.style.transition = ''; fc.classList.remove('swipeR', 'swipeL');
-    if (moved && Math.abs(dx) > 90) return answer(dx > 0);
-    fc.style.transform = ''; if (!moved) flip(); };
-  fc.addEventListener('pointerup', end); fc.addEventListener('pointercancel', () => { sx = null; fc.style.transform = ''; fc.style.transition = ''; });
+  document.getElementById('bn').onclick = () => { if (!busy) { busy = true; answer(false); } };
+  document.getElementById('by').onclick = () => { if (!busy) { busy = true; answer(true); } };
+  // swipe (touch + mouse) with direction lock, velocity and stamps
+  fc.addEventListener('animationend', () => fc.classList.remove('enter'), { once: true });
+  const stL = el.querySelector('.stamp.l'), stR = el.querySelector('.stamp.r');
+  let sx = null, sy = 0, dx = 0, dy = 0, lock = null, t0 = 0, busy = false;
+  const base = () => (ST && ST.flipped ? ' rotateY(180deg)' : '');
+  const paint = () => {
+    fc.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)${base()}`;
+    const o = Math.min(1, Math.abs(dx) / 90);
+    stR.style.opacity = dx > 0 ? o : 0; stL.style.opacity = dx < 0 ? o : 0;
+    fc.classList.toggle('swipeR', dx > 70); fc.classList.toggle('swipeL', dx < -70);
+  };
+  const reset = () => { fc.style.transition = ''; fc.style.transform = ''; stL.style.opacity = stR.style.opacity = 0; fc.classList.remove('swipeR', 'swipeL'); };
+  const start = (x, y) => { if (busy) return; sx = x; sy = y; dx = dy = 0; lock = null; t0 = performance.now(); fc.style.transition = 'none'; };
+  const move = (x, y) => {
+    if (sx === null) return false; dx = x - sx; dy = y - sy;
+    if (!lock && Math.hypot(dx, dy) > 8) lock = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'x' : 'y';
+    if (lock === 'x') { paint(); return true; }
+    return false;
+  };
+  const end = () => {
+    if (sx === null) return; sx = null;
+    const v = Math.abs(dx) / Math.max(1, performance.now() - t0);
+    if (lock === 'x' && (Math.abs(dx) > 80 || (Math.abs(dx) > 35 && v > 0.45))) {
+      busy = true; fc.style.transition = 'transform .28s ease-out, opacity .28s';
+      fc.style.transform = `translateX(${dx > 0 ? 140 : -140}vw) rotate(${dx > 0 ? 24 : -24}deg)${base()}`; fc.style.opacity = '0';
+      (dx > 0 ? stR : stL).style.opacity = 1;
+      return answer(dx > 0, true);
+    }
+    reset(); if (!lock) flip();
+  };
+  fc.addEventListener('touchstart', e => { if (e.touches.length === 1) start(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+  fc.addEventListener('touchmove', e => { if (move(e.touches[0].clientX, e.touches[0].clientY) && e.cancelable) e.preventDefault(); }, { passive: false });
+  fc.addEventListener('touchend', e => { if (e.cancelable) e.preventDefault(); end(); }, { passive: false });
+  fc.addEventListener('touchcancel', () => { sx = null; reset(); });
+  fc.addEventListener('mousedown', e => { start(e.clientX, e.clientY); const mm = ev => move(ev.clientX, ev.clientY); const mu = () => { window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); end(); }; window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); });
 }
-function answer(ok) {
+function answer(ok, swiped) {
   if (!ST) return; const fc = document.getElementById('fc'); const i = ST.idx[ST.i];
   const k = ST.lv + '|' + ST.dk + '|' + i; S.cards[k] = { s: ok ? 1 : 0, t: Date.now() };
   ok ? ST.yes++ : (ST.no++, ST.missed.push(i)); ST.i++;
   const r = dayRec(); r.n = (r.n || 0) + 1; r.c = r.c || {}; r.c[ST.dk] = (r.c[ST.dk] || 0) + 1; save();
   if (ST.daily) recordProgress(true);
   if (navigator.vibrate) navigator.vibrate(ok ? 8 : [6, 40, 6]);
-  if (fc) { fc.style.transform = ''; fc.classList.add(ok ? 'fly-r' : 'fly-l'); setTimeout(drawStudy, 260); } else drawStudy();
+  if (swiped) setTimeout(drawStudy, 240); else if (fc) { fc.style.transform = ''; fc.classList.add(ok ? 'fly-r' : 'fly-l'); setTimeout(drawStudy, 260); } else drawStudy();
 }
 function recordProgress(silent) {
   if (!ST) return; const r = dayRec();
