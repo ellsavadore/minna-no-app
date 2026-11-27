@@ -39,3 +39,10 @@ jobs:
           gh release delete apk -y --cleanup-tag || true
           gh release create apk minna-no-fukushu.apk --target "$GITHUB_SHA" --title "みんなの復習 · Aplikasi Android" \
             --notes "Unduh minna-no-fukushu.apk lalu buka di HP Android untuk memasang. Versi build ${{ github.run_number }}."
+      - name: Put APK on the website
+        run: |
+          cp minna-no-fukushu.apk public/minna-no-fukushu.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/minna-no-fukushu.apk
+          git diff --cached --quiet || (git commit -m "Update APK on website (build ${{ github.run_number }})" && git push)
