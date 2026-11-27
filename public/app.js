@@ -33,7 +33,8 @@ async function api(path, body, headers = {}) {
   return j;
 }
 let CONFIG = { daily: { k: 20, j: 10, b: 5 } };
-api('config').then(c => { if (c && c.daily) { CONFIG = c; if (route === 'home') render(); } }).catch(() => {});
+try { const cc = JSON.parse(localStorage.getItem('mna.cfg')); if (cc && cc.daily) CONFIG = cc; } catch {}
+api('config').then(c => { if (c && c.daily) { const changed = JSON.stringify(c.daily) !== JSON.stringify(CONFIG.daily); CONFIG = c; try { localStorage.setItem('mna.cfg', JSON.stringify(c)); } catch {} if (changed && route === 'home') render(); } }).catch(() => {});
 
 let syncTimer;
 function queueSync(now) { clearTimeout(syncTimer); syncTimer = setTimeout(sync, now ? 10 : 1500); }
@@ -179,7 +180,7 @@ function renderHome() {
       <div class="ring"><svg width="96" height="96"><circle cx="48" cy="48" r="42" stroke="var(--fill)" stroke-width="10" fill="none"/>
         <circle cx="48" cy="48" r="42" stroke="url(#g)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}" style="transition:stroke-dashoffset .8s"/>
         <defs><linearGradient id="g"><stop offset="0" stop-color="#40d2c6"/><stop offset="1" stop-color="#087f86"/></linearGradient></defs></svg><b>${pct}%</b></div>
-      <div><h3>${pct >= 100 ? 'Tugas hari ini selesai' : 'Tugas Fukushu Hari Ini'}</h3>
+      <div><h3>${pct >= 100 ? 'Tugas hari ini selesai' : 'Fukushu Hari Ini'}</h3>
       <p>${pct >= 100 ? 'すごい！ Kamu hebat. Sampai jumpa besok ya.' : 'Selesaikan Kotoba, Kanji, dan Pola Kalimat untuk menjaga streak 🔥'}</p>
       <p style="margin-top:6px"><span class="pill p">${esc(LEVEL_NAME[lv])}</span></p></div>
     </div>
@@ -291,11 +292,11 @@ function faceHTML(c, side) {
   const rev = S.prefs.reverse; const lesson = `<span class="pill bab">第${esc(c.l)}課 · Bab ${esc(c.l)}</span>`;
   if (c.type === 'b') {
     const ex = c.ex[0];
-    const pat = `<div class="pattern">${c.p.split('\n').map(l => `<div>${patHTML(l)}</div>`).join('')}</div>`;
-    if (side === 'front' && !rev) return `<div class="cap">文型 · Pola</div>${pat}${ex ? `<div class="exbox"><div class="exjp">${esc(ex[0])}</div></div>` : ''}`;
+    const pat = `<div class="pattern" lang="ja">${c.p.split('\n').map(l => `<div>${patHTML(l)}</div>`).join('')}</div>`;
+    if (side === 'front' && !rev) return `<div class="cap">文型 · Pola</div>${pat}${ex ? `<div class="exbox"><div class="exjp" lang="ja">${esc(ex[0])}</div></div>` : ''}`;
     if (side === 'front' && rev) return ex ? `<div class="cap">Arti</div><div class="mean xl">${esc(ex[1])}</div><div class="ask">Bagaimana bahasa Jepangnya?</div>` : `<div class="cap">Arti</div><div class="mean">${esc(c.exp.split(' • ')[0])}</div>`;
     return `<div class="cap">文型 · Pola</div>${pat}
-      ${c.ex.slice(0, 3).map((e, i) => `<div class="exbox"><span class="exn">例${i + 1}</span><div class="exjp">${esc(e[0])}</div>${e[1] ? `<div class="exid">${esc(e[1])}</div>` : ''}</div>`).join('')}
+      ${c.ex.slice(0, 3).map((e, i) => `<div class="exbox"><span class="exn">例${i + 1}</span><div class="exjp" lang="ja">${esc(e[0])}</div>${e[1] ? `<div class="exid">${esc(e[1])}</div>` : ''}</div>`).join('')}
       ${c.exp ? `<details class="exp"><summary>Penjelasan</summary>${esc(c.exp.split(' • ')[0])}</details>` : ''}<div class="foot">${lesson}</div>`;
   }
   const font = c.type === 'j' ? 'kyokasho' : '';
@@ -317,7 +318,7 @@ function drawStudy() {
     <div class="tally"><span class="l">✕ ${ST.no}</span><span class="r">✓ ${ST.yes}</span></div>
     <div class="stage"><span class="stamp l">BELUM</span><span class="stamp r">HAFAL</span><div class="fc enter dk-${ST.dk}" id="fc">
       <div class="face"><button class="iconbtn say" data-say aria-label="Dengarkan">${I.spk}</button>
-        <div class="side front"><div class="inner">${faceHTML(c, 'front')}</div><div class="hint">Ketuk untuk membalik · geser ← belum · hafal →</div></div>
+        <div class="side front"><div class="inner">${faceHTML(c, 'front')}</div><div class="hint">Ketuk untuk membalik  ·  ← Belum  ·  Hafal →</div></div>
         <div class="side back"><div class="inner">${faceHTML(c, 'back')}</div></div>
       </div>
     </div></div>
@@ -407,7 +408,7 @@ function drawDone() {
 function confetti(big) {
   if (!big) return; const c = document.createElement('div'); c.className = 'confetti';
   const cols = ['#0aa39c', '#40d2c6', '#087f86', '#9be8df', '#ffffff', '#1596bf'];
-  for (let i = 0; i < 70; i++) { const p = document.createElement('i'); p.style.left = Math.random() * 100 + 'vw'; p.style.background = cols[i % cols.length]; p.style.animationDuration = 1.8 + Math.random() * 1.8 + 's'; p.style.animationDelay = Math.random() * .4 + 's'; p.style.transform = `rotate(${Math.random() * 360}deg)`; c.appendChild(p); }
+  for (let i = 0; i < 36; i++) { const p = document.createElement('i'); p.style.left = Math.random() * 100 + 'vw'; p.style.background = cols[i % cols.length]; p.style.animationDuration = 1.8 + Math.random() * 1.8 + 's'; p.style.animationDelay = Math.random() * .4 + 's'; p.style.transform = `rotate(${Math.random() * 360}deg)`; c.appendChild(p); }
   document.body.appendChild(c); setTimeout(() => c.remove(), 4200);
 }
 document.addEventListener('keydown', e => {
