@@ -9,6 +9,8 @@ const DECKS = {
   b: { name: 'Pola Kalimat', jp: '文型', ico: '文', cls: 't-b', unit: 'pola' },
 };
 const DATA_BASE = window.MNA_DATA_BASE || '/data/';
+const IN_APP = /MinnaFukushuApp/.test(navigator.userAgent);
+const APK_URL = 'https://github.com/ellsavadore/minna-no-app/releases/download/apk/minna-no-fukushu.apk';
 const $app = document.getElementById('app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const todayKey = (d = new Date()) => { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); };
@@ -106,7 +108,9 @@ let jaVoice = null;
 function pickVoice() { if (!('speechSynthesis' in window)) return; const vs = speechSynthesis.getVoices(); jaVoice = vs.find(v => /ja[-_]JP/i.test(v.lang) && /Kyoko|O-ren|Google/i.test(v.name)) || vs.find(v => /^ja/i.test(v.lang)) || null; }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
 function speak(text) {
-  if (!('speechSynthesis' in window) || !text) return;
+  if (!text) return;
+  if (window.AndroidTTS) { try { AndroidTTS.speak(String(text).replace(/[～〜~]/g, '').replace(/（[^）]*）|\([^)]*\)/g, '')); } catch {} return; }
+  if (!('speechSynthesis' in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(String(text).replace(/[～〜~]/g, '').replace(/（[^）]*）|\([^)]*\)/g, ''));
   u.lang = 'ja-JP'; u.rate = 0.9; if (jaVoice) u.voice = jaVoice; speechSynthesis.speak(u);
@@ -145,7 +149,7 @@ function renderOnboard() {
     </form>
     <p class="sub" style="text-align:center;margin:0 10px">Sudah pernah daftar? Isi nama &amp; email yang sama untuk masuk kembali.</p>
     <a class="link" href="#admin">Masuk sebagai Admin</a>
-    <p class="credit"><span>作</span>サルマン・アルヒダムカラ<small>Salman Alhidamkara</small></p>
+    <p class="credit"><span>作</span>サルマン・アルヒダムカラ<small>Salman Alhidamkara</small></p>${IN_APP ? '' : `<a class="apklink" href="${APK_URL}" rel="noopener">⬇ Unduh aplikasi Android (APK)</a>`}
   </div>`;
   const seg = document.getElementById('lv');
   seg.onclick = e => { const b = e.target.closest('button'); if (!b) return; lv = b.dataset.l; seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
@@ -269,6 +273,7 @@ function renderMe() {
       <div class="optrow">Mulai dari arti (Indonesia → Jepang)<button class="switch ${S.prefs.reverse ? 'on' : ''}" data-p="reverse"></button></div>
       <div class="optrow">Ucapkan otomatis (suara Jepang)<button class="switch ${S.prefs.auto ? 'on' : ''}" data-p="auto"></button></div>
     </div>
+    ${IN_APP ? '' : `<a class="card apkcard" href="${APK_URL}" rel="noopener"><div class="tico t-k">⬇</div><div style="min-width:0;flex:1"><b>Aplikasi Android</b><small>Unduh APK みんなの復習 untuk HP Android</small></div><span class="chev">›</span></a>`}
     <button class="btn ghost" id="out" style="margin-top:22px;color:#e5484d">Keluar</button>
     <p class="credit"><span>作</span>サルマン・アルヒダムカラ<small>Salman Alhidamkara</small></p><p class="sub" style="text-align:center;margin-top:6px;font-size:12px">みんなの復習 · Materi: IRODORI ©The Japan Foundation</p>
   </div>`;
@@ -285,7 +290,7 @@ function startStudy(lv, dk, idx, opt = {}) {
   const el = document.createElement('div'); el.className = 'study'; el.id = 'study'; document.body.appendChild(el); document.body.style.overflow = 'hidden';
   drawStudy();
 }
-function closeStudy() { document.getElementById('study')?.remove(); document.body.style.overflow = ''; if ('speechSynthesis' in window) speechSynthesis.cancel(); ST = null; render(); }
+function closeStudy() { document.getElementById('study')?.remove(); document.body.style.overflow = ''; if (window.AndroidTTS) { try { AndroidTTS.stop(); } catch {} } else if ('speechSynthesis' in window) speechSynthesis.cancel(); ST = null; render(); }
 function jpSize(t) { const n = [...String(t).replace(/[（(][^）)]*[）)]/g, '')].length; return n <= 2 ? 'xl' : n <= 4 ? 'l' : n <= 7 ? 'm' : n <= 12 ? 's' : 'xs'; }
 function patHTML(p) { return esc(p).replace(/(^|[^A-Za-z])(N[12]?|S[12]?|V|イA|ナA)(?![a-z])/g, '$1<b class="sym">$2</b>'); }
 function faceHTML(c, side) {

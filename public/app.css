@@ -219,3 +219,7 @@ details.exp[open] summary{margin-bottom:6px}
 .credit{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 8px;margin:22px auto 6px;font-family:var(--serif);font-weight:600;font-size:14px;letter-spacing:.12em;color:var(--ink2)}
 .credit span{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--accentSoft);color:var(--deep);font-size:12.5px;letter-spacing:0}
 .credit small{flex-basis:100%;text-align:center;font-family:var(--ui);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ink3);font-weight:600}
+
+.apkcard{display:flex;align-items:center;gap:14px;padding:14px 16px;margin-top:22px;text-decoration:none;color:inherit}
+.apkcard b{display:block;font-size:16px}.apkcard small{display:block;color:var(--ink2);font-size:13px;margin-top:2px}.apkcard .chev{color:var(--ink3);font-size:24px}
+.apklink{display:block;text-align:center;margin:14px auto 0;font-weight:700;font-size:14px;color:var(--deep);text-decoration:none}
