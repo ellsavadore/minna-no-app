@@ -1,4 +1,4 @@
-/* みんなの愛している — Flashcard Fukushu */
+/* みんなを愛している — Flashcard Fukushu */
 (() => {
 'use strict';
 const LEVELS = ['A1', 'A2.1', 'A2.2'];
@@ -133,8 +133,8 @@ function renderOnboard() {
   let lv = 'A1';
   $app.innerHTML = `<div class="hero">
     <div class="appicon">愛</div>
-    <h1 class="appname">みんなの愛している</h1>
-    <p class="romaji">MINNA NO AISHITEIRU</p>
+    <h1 class="appname">みんなを愛している</h1>
+    <p class="romaji">MINNA WO AISHITEIRU</p>
     <form class="card formcard" id="reg" autocomplete="on">
       <label class="field"><span>Nama lengkap</span><input class="input" name="name" required maxlength="60" placeholder="Nama kamu" autocomplete="name"></label>
       <label class="field"><span>Email</span><input class="input" name="email" type="email" required maxlength="120" placeholder="nama@email.com" autocomplete="email" inputmode="email"></label>
@@ -268,7 +268,7 @@ function renderMe() {
       <div class="optrow">Ucapkan otomatis (suara Jepang)<button class="switch ${S.prefs.auto ? 'on' : ''}" data-p="auto"></button></div>
     </div>
     <button class="btn ghost" id="out" style="margin-top:22px;color:#e5484d">Keluar</button>
-    <p class="sub" style="text-align:center;margin-top:18px;font-size:12.5px">みんなの愛している · Materi: IRODORI ©The Japan Foundation</p>
+    <p class="sub" style="text-align:center;margin-top:18px;font-size:12.5px">みんなを愛している · Materi: IRODORI ©The Japan Foundation</p>
   </div>`;
   document.getElementById('lvp').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.user.level = b.dataset.l; save(); queueSync(); getData(b.dataset.l).then(render); };
   $app.querySelectorAll('[data-p]').forEach(sw => sw.onclick = () => { S.prefs[sw.dataset.p] = !S.prefs[sw.dataset.p]; sw.classList.toggle('on'); save(); });

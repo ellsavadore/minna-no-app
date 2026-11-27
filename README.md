@@ -1,4 +1,4 @@
-# みんなの愛している (Minna no Aishiteiru)
+# みんなを愛している (Minna wo Aishiteiru)
 
 Website flashcard fukushu untuk Kotoba, Kanji, dan Pola Kalimat (Bunpou) level A1, A2.1, A2.2.
 Materi diambil dari buku IRODORI ©The Japan Foundation (Daftar Kosakata + Bab 1–18).
