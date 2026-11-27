@@ -144,6 +144,7 @@ function renderOnboard() {
     </form>
     <p class="sub" style="text-align:center;margin:0 10px">Sudah pernah daftar? Isi nama &amp; email yang sama untuk masuk kembali.</p>
     <a class="link" href="#admin">Masuk sebagai Admin</a>
+    <p class="credit"><span>作</span>サルマン・アルヒダムカラ<small>Salman Alhidamkara</small></p>
   </div>`;
   const seg = document.getElementById('lv');
   seg.onclick = e => { const b = e.target.closest('button'); if (!b) return; lv = b.dataset.l; seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); };
@@ -268,7 +269,7 @@ function renderMe() {
       <div class="optrow">Ucapkan otomatis (suara Jepang)<button class="switch ${S.prefs.auto ? 'on' : ''}" data-p="auto"></button></div>
     </div>
     <button class="btn ghost" id="out" style="margin-top:22px;color:#e5484d">Keluar</button>
-    <p class="sub" style="text-align:center;margin-top:18px;font-size:12.5px">みんなの復習 · Materi: IRODORI ©The Japan Foundation</p>
+    <p class="credit"><span>作</span>サルマン・アルヒダムカラ<small>Salman Alhidamkara</small></p><p class="sub" style="text-align:center;margin-top:6px;font-size:12px">みんなの復習 · Materi: IRODORI ©The Japan Foundation</p>
   </div>`;
   document.getElementById('lvp').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.user.level = b.dataset.l; save(); queueSync(); getData(b.dataset.l).then(render); };
   $app.querySelectorAll('[data-p]').forEach(sw => sw.onclick = () => { S.prefs[sw.dataset.p] = !S.prefs[sw.dataset.p]; sw.classList.toggle('on'); save(); });
@@ -406,7 +407,7 @@ async function renderAdmin() {
   if (!pass) {
     $app.innerHTML = `<div class="hero"><div class="appicon">愛</div><h1 class="appname">管理者</h1><p class="romaji">ADMIN · SENSEI</p>
       <form class="card formcard" id="al"><label class="field"><span>Password admin</span><input class="input" type="password" name="p" required autocomplete="current-password"></label>
-      <div class="err" id="err"></div><button class="btn primary">Masuk</button></form><a class="link" href="#">← Kembali ke aplikasi siswa</a></div>`;
+      <div class="err" id="err"></div><button class="btn primary">Masuk</button></form><a class="link" href="#">← Kembali ke aplikasi siswa</a><p class="credit"><span>作</span>サルマン・アルヒダムカラ<small>Salman Alhidamkara</small></p></div>`;
     document.getElementById('al').onsubmit = async e => { e.preventDefault(); const p = new FormData(e.target).get('p');
       try { await api('admin', null, { 'x-admin-pass': p }); sessionStorage.setItem('mna.admin', p); renderAdmin(); } catch (err) { document.getElementById('err').textContent = err.message === 'unauthorized' ? 'Password salah.' : err.message; } };
     return;

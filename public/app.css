@@ -192,3 +192,6 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .stamp{position:absolute;top:40px;z-index:5;font-weight:900;font-size:22px;letter-spacing:.08em;padding:6px 14px;border-radius:12px;border:3px solid;opacity:0;pointer-events:none;transition:opacity .1s}
 .stamp.r{left:22px;color:var(--accent);border-color:var(--accent);transform:rotate(-12deg);background:var(--solid)}
 .stamp.l{right:22px;color:var(--orange);border-color:var(--orange);transform:rotate(12deg);background:var(--solid)}
+.credit{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:4px 8px;margin:22px auto 6px;font-family:var(--serif);font-weight:600;font-size:14px;letter-spacing:.12em;color:var(--ink2)}
+.credit span{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:var(--accentSoft);color:var(--deep);font-size:12.5px;letter-spacing:0}
+.credit small{flex-basis:100%;text-align:center;font-family:var(--ui);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--ink3);font-weight:600}
