@@ -1,0 +1,8 @@
+{
+  "name": "minna-no-aishiteiru",
+  "private": true,
+  "version": "1.0.0",
+  "description": "みんなの愛している — Flashcard fukushu Kotoba, Kanji, Pola Kalimat (A1, A2.1, A2.2)",
+  "engines": { "node": ">=20" },
+  "dependencies": { "@vercel/blob": "^1.1.1" }
+}
