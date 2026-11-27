@@ -1,4 +1,4 @@
-const { put, head, list } = require('@vercel/blob');
+const { put, head, list, BlobNotFoundError } = require('@vercel/blob');
 const crypto = require('crypto');
 
 const SECRET = process.env.APP_SECRET || process.env.ADMIN_PASSWORD || 'minna';
@@ -14,7 +14,7 @@ async function readJSON(pathname) {
     if (!r.ok) return null;
     return await r.json();
   } catch (e) {
-    if (e && (e.name === 'BlobNotFoundError' || /not.?found/i.test(e.message || ''))) return null;
+    if (e instanceof BlobNotFoundError || /does not exist|not.?found/i.test((e && e.message) || '')) return null;
     throw e;
   }
 }

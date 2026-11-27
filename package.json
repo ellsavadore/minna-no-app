@@ -3,6 +3,6 @@
   "private": true,
   "version": "1.0.0",
   "description": "みんなの愛している — Flashcard fukushu Kotoba, Kanji, Pola Kalimat (A1, A2.1, A2.2)",
-  "engines": { "node": ">=20" },
+  "engines": { "node": "22.x" },
   "dependencies": { "@vercel/blob": "^1.1.1" }
 }
