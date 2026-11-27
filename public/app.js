@@ -285,19 +285,25 @@ function startStudy(lv, dk, idx, opt = {}) {
   drawStudy();
 }
 function closeStudy() { document.getElementById('study')?.remove(); document.body.style.overflow = ''; if ('speechSynthesis' in window) speechSynthesis.cancel(); ST = null; render(); }
+function jpSize(t) { const n = [...String(t).replace(/[（(][^）)]*[）)]/g, '')].length; return n <= 2 ? 'xl' : n <= 4 ? 'l' : n <= 7 ? 'm' : n <= 12 ? 's' : 'xs'; }
+function patHTML(p) { return esc(p).replace(/(^|[^A-Za-z])(N[12]?|S[12]?|V|イA|ナA)(?![a-z])/g, '$1<b class="sym">$2</b>'); }
 function faceHTML(c, side) {
-  const rev = S.prefs.reverse; const lesson = `<div class="lesson"><span class="pill">Bab ${esc(c.l)}</span></div>`;
+  const rev = S.prefs.reverse; const lesson = `<span class="pill bab">第${esc(c.l)}課 · Bab ${esc(c.l)}</span>`;
   if (c.type === 'b') {
     const ex = c.ex[0];
-    if (side === 'front' && !rev) return `<div class="big ${c.p.length > 14 ? 's' : 'm'}">${c.p.split('\n').map(esc).join('<br>')}</div>${ex ? `<div class="exjp">${esc(ex[0])}</div>` : ''}`;
-    if (side === 'front' && rev) return ex ? `<div class="mean">${esc(ex[1])}</div><div class="exid" style="margin-top:12px">Bagaimana bahasa Jepangnya?</div>` : `<div class="mean s">${esc(c.exp.split(' • ')[0])}</div>`;
-    return `<div class="big s" style="font-size:20px;color:var(--accent)">${c.p.split('\n').map(esc).join('<br>')}</div>
-      ${c.ex.slice(0, 3).map(e => `<div class="exjp" style="margin-top:12px">${esc(e[0])}</div><div class="exid">${esc(e[1])}</div>`).join('')}
-      ${c.exp ? `<div class="exp">${esc(c.exp.split(' • ')[0])}</div>` : ''}${lesson}`;
+    const pat = `<div class="pattern">${c.p.split('\n').map(l => `<div>${patHTML(l)}</div>`).join('')}</div>`;
+    if (side === 'front' && !rev) return `<div class="cap">文型 · Pola</div>${pat}${ex ? `<div class="exbox"><div class="exjp">${esc(ex[0])}</div></div>` : ''}`;
+    if (side === 'front' && rev) return ex ? `<div class="cap">Arti</div><div class="mean xl">${esc(ex[1])}</div><div class="ask">Bagaimana bahasa Jepangnya?</div>` : `<div class="cap">Arti</div><div class="mean">${esc(c.exp.split(' • ')[0])}</div>`;
+    return `<div class="cap">文型 · Pola</div>${pat}
+      ${c.ex.slice(0, 3).map((e, i) => `<div class="exbox"><span class="exn">例${i + 1}</span><div class="exjp">${esc(e[0])}</div>${e[1] ? `<div class="exid">${esc(e[1])}</div>` : ''}</div>`).join('')}
+      ${c.exp ? `<details class="exp"><summary>Penjelasan</summary>${esc(c.exp.split(' • ')[0])}</details>` : ''}<div class="foot">${lesson}</div>`;
   }
-  const len = c.w.length; const sz = len > 9 ? 's' : len > 5 ? 'm' : '';
-  if (side === 'front') return rev ? `<div class="mean" style="font-size:clamp(22px,6.4vw,30px)">${esc(c.m)}</div>` : `<div class="big ${sz}">${esc(c.w)}</div>`;
-  return `${S.prefs.reading && c.r ? `<div class="read">${esc(c.r)}</div>` : ''}<div class="big ${sz}">${esc(c.w)}</div><div class="mean" style="margin-top:16px">${esc(c.m)}</div>${lesson}`;
+  const font = c.type === 'j' ? 'kyokasho' : '';
+  if (side === 'front') return rev ? `<div class="cap">Arti</div><div class="mean xl">${esc(c.m)}</div><div class="ask">Bagaimana bahasa Jepangnya?</div>`
+    : `<div class="cap">${c.type === 'j' ? '漢字 · Kanji' : '言葉 · Kotoba'}</div><div class="word ${jpSize(c.w)} ${font}" lang="ja">${esc(c.w)}</div>`;
+  return `<div class="cap">${c.type === 'j' ? '漢字 · Kanji' : '言葉 · Kotoba'}</div>
+    ${S.prefs.reading && c.r ? `<div class="yomi" lang="ja">${esc(c.r)}</div>` : ''}<div class="word ${jpSize(c.w)} ${font}" lang="ja">${esc(c.w)}</div>
+    <div class="divider"></div><div class="mean">${esc(c.m)}</div><div class="foot">${lesson}</div>`;
 }
 function drawStudy() {
   const el = document.getElementById('study'); if (!el || !ST) return;
@@ -305,16 +311,26 @@ function drawStudy() {
   if (ST.i >= total) return drawDone();
   const c = card(ST.lv, ST.dk, ST.idx[ST.i]); ST.flipped = false;
   const D = DECKS[ST.dk];
-  el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq" aria-label="Tutup">${I.x}</button><div class="pbar"><i style="width:${100 * ST.i / total}%"></i></div><div class="counter">${ST.i + 1} / ${total}</div></div>
-    <div class="tally"><span class="l">${ST.no} belum</span><span style="color:var(--ink3);font-weight:600">${esc(ST.title)}</span><span class="r">${ST.yes} hafal</span></div>
-    <div class="stage"><span class="stamp l">BELUM</span><span class="stamp r">HAFAL</span><div class="fc enter" id="fc">
-      <div class="face front"><span class="tag">${D.name}</span><button class="iconbtn say" data-say>${I.spk}</button><div class="inner">${faceHTML(c, 'front')}</div><div class="hint">Ketuk untuk membalik · geser ← belum / hafal →</div></div>
-      <div class="face back"><span class="tag">${D.name}</span><button class="iconbtn say" data-say>${I.spk}</button><div class="inner">${faceHTML(c, 'back')}</div></div>
+  el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq" aria-label="Tutup">${I.x}</button>
+      <div class="sthead"><div class="sttitle">${esc(ST.title)}</div><div class="pbar"><i style="width:${100 * ST.i / total}%"></i></div></div>
+      <div class="counter"><b>${ST.i + 1}</b>/${total}</div></div>
+    <div class="tally"><span class="l">✕ ${ST.no}</span><span class="r">✓ ${ST.yes}</span></div>
+    <div class="stage"><span class="stamp l">BELUM</span><span class="stamp r">HAFAL</span><div class="fc enter dk-${ST.dk}" id="fc">
+      <div class="face"><button class="iconbtn say" data-say aria-label="Dengarkan">${I.spk}</button>
+        <div class="side front"><div class="inner">${faceHTML(c, 'front')}</div><div class="hint">Ketuk untuk membalik · geser ← belum · hafal →</div></div>
+        <div class="side back"><div class="inner">${faceHTML(c, 'back')}</div></div>
+      </div>
     </div></div>
     <div class="actions"><button class="abtn no" id="bn">✕ Belum</button><button class="abtn flipb" id="bf" aria-label="Balik">${I.flip}</button><button class="abtn yes" id="by">✓ Hafal</button></div>`;
   const fc = document.getElementById('fc');
   const sayText = c.type === 'b' ? (c.ex[0] ? c.ex[0][0] : c.p) : (c.r || c.w);
-  const flip = () => { ST.flipped = !ST.flipped; fc.classList.toggle('flip', ST.flipped); if (ST.flipped && S.prefs.auto && (S.prefs.reverse || c.type !== 'b')) speak(sayText); };
+  let turning = false;
+  const flip = () => {
+    if (turning) return; turning = true; fc.classList.add('turn');
+    setTimeout(() => { ST.flipped = !ST.flipped; fc.classList.toggle('flip', ST.flipped); fc.querySelector('.face').scrollTop = 0; fc.classList.remove('turn');
+      setTimeout(() => { turning = false; }, 170);
+      if (ST.flipped && S.prefs.auto && (S.prefs.reverse || c.type !== 'b')) speak(sayText); }, 160);
+  };
   if (S.prefs.auto && !S.prefs.reverse && c.type !== 'b') setTimeout(() => speak(c.type === 'j' ? sayText : c.r || c.w), 250);
   el.querySelectorAll('[data-say]').forEach(b => b.onclick = e => { e.stopPropagation(); speak(sayText); });
   document.getElementById('xq').onclick = () => { if (ST.i > 0) recordProgress(); closeStudy(); };
@@ -325,7 +341,7 @@ function drawStudy() {
   fc.addEventListener('animationend', () => fc.classList.remove('enter'), { once: true });
   const stL = el.querySelector('.stamp.l'), stR = el.querySelector('.stamp.r');
   let sx = null, sy = 0, dx = 0, dy = 0, lock = null, t0 = 0, busy = false;
-  const base = () => (ST && ST.flipped ? ' rotateY(180deg)' : '');
+  const base = () => '';
   const paint = () => {
     fc.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)${base()}`;
     const o = Math.min(1, Math.abs(dx) / 90);
@@ -351,11 +367,12 @@ function drawStudy() {
     }
     reset(); if (!lock) flip();
   };
-  fc.addEventListener('touchstart', e => { if (e.touches.length === 1) start(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+  const skip = t => t.closest && t.closest('[data-say],summary,details[open]');
+  fc.addEventListener('touchstart', e => { if (e.touches.length === 1 && !skip(e.target)) start(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
   fc.addEventListener('touchmove', e => { if (move(e.touches[0].clientX, e.touches[0].clientY) && e.cancelable) e.preventDefault(); }, { passive: false });
-  fc.addEventListener('touchend', e => { if (e.cancelable) e.preventDefault(); end(); }, { passive: false });
+  fc.addEventListener('touchend', e => { if (sx === null) return; if (e.cancelable) e.preventDefault(); end(); }, { passive: false });
   fc.addEventListener('touchcancel', () => { sx = null; reset(); });
-  fc.addEventListener('mousedown', e => { start(e.clientX, e.clientY); const mm = ev => move(ev.clientX, ev.clientY); const mu = () => { window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); end(); }; window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); });
+  fc.addEventListener('mousedown', e => { if (skip(e.target)) return; start(e.clientX, e.clientY); const mm = ev => move(ev.clientX, ev.clientY); const mu = () => { window.removeEventListener('mousemove', mm); window.removeEventListener('mouseup', mu); end(); }; window.addEventListener('mousemove', mm); window.addEventListener('mouseup', mu); });
 }
 function answer(ok, swiped) {
   if (!ST) return; const fc = document.getElementById('fc'); const i = ST.idx[ST.i];
