@@ -86,6 +86,10 @@ function dailySet(lv) {
   S.daily = { key, sets, cfg: cfgKey }; save();
   return sets;
 }
+const ROT_START = '2026-11-28'; // hari ini A1, besok A2.1, lusa A2.2, lalu kembali ke A1
+function dayLevel(k = todayKey()) { const d = Math.round((new Date(k + 'T12:00:00') - new Date(ROT_START + 'T12:00:00')) / 86400000); return LEVELS[((d % 3) + 3) % 3]; }
+const MOTTO = '<span><ruby>頑張<rt>がんば</rt></ruby>ってね！</span><br><span>みんなのご<ruby>飯<rt>はん</rt></ruby>が、</span><span>いつも<ruby>温<rt>あたた</rt></ruby>かくありますように。</span>';
+const mottoHTML = (cls = '') => `<div class="motto ${cls}"><p class="mjp" lang="ja">${MOTTO}</p><p class="mid">Semangat ya, semoga nasi kalian selalu hangat.</p></div>`;
 function dayRec(k = todayKey()) { return (S.days[k] ||= {}); }
 function taskDone(dk, k = todayKey()) { const r = S.days[k]; return !!(r && r[dk] && r[dk][0] >= r[dk][1] && r[dk][1] > 0); }
 function streak() { let n = 0; let k = todayKey(); if (!allDone(k)) k = dayShift(k, -1); while (allDone(k)) { n++; k = dayShift(k, -1); } return n; }
@@ -125,7 +129,7 @@ function go(r) { route = r; render(); window.scrollTo(0, 0); }
 function render() {
   if (location.hash === '#admin') return renderAdmin();
   if (!S.user) return renderOnboard();
-  const lv = S.user.level;
+  const lv = route === 'home' ? dayLevel() : S.user.level;
   if (!DATA[lv]) { $app.innerHTML = '<div class="spin"></div>'; getData(lv).then(render).catch(() => { $app.innerHTML = '<div class="empty">Gagal memuat data. Periksa koneksi internet lalu muat ulang.</div>'; }); return; }
   if (route === 'decks') renderDecks(); else if (route === 'me') renderMe(); else renderHome();
   $app.insertAdjacentHTML('beforeend', `<nav class="tabbar">
@@ -143,6 +147,7 @@ function renderOnboard() {
     <div class="appicon">愛</div>
     <h1 class="appname">みんなの復習</h1>
     <p class="romaji">MINNA NO FUKUSHU</p><div class="rule"></div>
+    ${mottoHTML('small')}
     <form class="card formcard" id="reg" autocomplete="on">
       <label class="field"><span>Nama lengkap</span><input class="input" name="name" required maxlength="60" placeholder="Nama kamu" autocomplete="name"></label>
       <label class="field"><span>Email</span><input class="input" name="email" type="email" required maxlength="120" placeholder="nama@email.com" autocomplete="email" inputmode="email"></label>
@@ -174,7 +179,7 @@ function renderOnboard() {
 function greetWord() { const h = new Date().getHours(); return h < 11 ? 'おはよう' : h < 18 ? 'こんにちは' : 'こんばんは'; }
 function todayParts(lv) { const sets = dailySet(lv), rec = dayRec(); return ['k', 'j', 'b'].map(dk => { const tot = sets[dk].length; const done = Math.min(rec[dk] ? rec[dk][0] : 0, tot); return { dk, tot, done }; }); }
 function renderHome() {
-  const lv = S.user.level; const sets = dailySet(lv); const rec = dayRec();
+  const lv = dayLevel(); const sets = dailySet(lv); const rec = dayRec();
   const parts = todayParts(lv);
   const pct = parts.every(p => p.tot && p.done >= p.tot) ? 100 : 0;
   const st = streak(); const sumTot = parts.reduce((a, p) => a + p.tot, 0), sumDone = parts.reduce((a, p) => a + p.done, 0); const allPct = sumTot ? Math.floor(100 * sumDone / sumTot) : 0; const left = sumTot - sumDone;
@@ -186,13 +191,14 @@ function renderHome() {
       <div><div class="hi jp">${greetWord()},</div><div class="nm">${esc(S.user.name.split(' ')[0])}</div></div><div class="spacer"></div>
       <div class="streak">🔥 ${st}</div></div>
     <div class="mission">
-      <div class="mtop"><span class="mlabel">${fullLevel() ? 'Misi Hari Ini' : 'Target Hari Ini'}</span><span class="mlv">${esc(lv)}</span></div>
+      <div class="mtop"><span class="mlabel">${fullLevel() ? 'Misi Hari Ini' : 'Target Hari Ini'}</span><span class="rot">${[0, 1, 2].map(i => { const l = dayLevel(dayShift(todayKey(), i)); return `<span class="${i ? '' : 'on'}">${i ? (i === 1 ? 'Besok ' : 'Lusa ') : ''}${l}</span>`; }).join('')}</span></div>
       <h2>${pct >= 100 ? 'お疲れさまでした！' : fullLevel() ? 'Tamatkan ' + esc(lv) + ' hari ini' : 'Fukushu hari ini'}</h2>
       <p>${pct >= 100 ? 'Semua kotoba, kanji, dan pola ' + esc(lv) + ' sudah selesai. すごい！' : fullLevel() ? 'Selesaikan semua kotoba, kanji, dan pola kalimat ' + esc(LEVEL_NAME[lv]) + '.' : 'Selesaikan Kotoba, Kanji, dan Pola Kalimat untuk menjaga streak.'}</p>
       <div class="mbar"><i style="width:${allPct}%"></i></div>
       <div class="mstats"><div><b>${allPct}%</b><small>selesai</small></div><div><b>${sumDone.toLocaleString('id-ID')}</b><small>dari ${sumTot.toLocaleString('id-ID')} kartu</small></div><div><b>${left > 0 ? eta : '✓'}</b><small>${left > 0 ? 'perkiraan sisa' : 'tuntas'}</small></div></div>
     </div>
-    <div class="section">Tugas Hari Ini</div>
+    ${mottoHTML()}
+    <div class="section">Tugas Hari Ini · ${esc(lv)}</div>
     ${parts.map(p => { const D = DECKS[p.dk]; const ok = p.tot > 0 && p.done >= p.tot; const pp = p.tot ? Math.round(100 * p.done / p.tot) : 0; return `<button class="card task t2 dk-${p.dk} ${ok ? 'complete' : ''}" data-task="${p.dk}">
       <div class="tico ${D.cls}">${D.ico}</div>
       <div style="flex:1;min-width:0"><div class="tt">${D.name} <span class="jp" style="color:var(--ink3);font-weight:500;font-size:14px">${D.jp}</span></div>
@@ -288,7 +294,7 @@ function renderMe() {
       <div class="stats3"><div><b>🔥 ${streak()}</b><small>Streak</small></div><div><b>${tm}</b><small>Kartu hafal</small></div><div><b>${daysActive}</b><small>Hari aktif</small></div></div></div>
     <div class="section">Level Belajar</div>
     <div class="card" style="padding:14px"><div class="seg" id="lvp">${LEVELS.map(l => `<button data-l="${l}" class="${l === u.level ? 'on' : ''}">${l}</button>`).join('')}</div>
-    <p class="sub" style="margin:10px 4px 0;font-size:13px">Tugas harian diambil dari level ini.</p></div>
+    <p class="sub" style="margin:10px 4px 0;font-size:13px">Dipakai di halaman Flashcard. Tugas harian bergilir otomatis tiap hari: A1 → A2.1 → A2.2 → A1 …</p></div>
     <div class="section">Pengaturan Kartu</div>
     <div class="card" style="padding:4px 16px">
       <div class="optrow">Tampilkan cara baca (furigana)<button class="switch ${S.prefs.reading ? 'on' : ''}" data-p="reading"></button></div>
@@ -427,7 +433,8 @@ function undo() {
 }
 function recordProgress(silent) {
   if (!ST) return; const r = dayRec();
-  if (ST.daily) { const tot = ST.all; const prev = r[ST.dk] ? r[ST.dk][0] : 0; r[ST.dk] = [Math.max(prev, Math.min(ST.off + ST.i, tot)), tot]; }
+  if (ST.daily) { const tot = ST.all; const prev = r[ST.dk] ? r[ST.dk][0] : 0; r[ST.dk] = [Math.max(prev, Math.min(ST.off + ST.i, tot)), tot];
+    const sets = dailySet(ST.lv); for (const dk of ['k', 'j', 'b']) if (!r[dk]) r[dk] = [0, sets[dk].length]; }
   r.ms = (r.ms || 0) + (silent ? 0 : Date.now() - ST.t0); if (!silent) ST.t0 = Date.now();
   r.last = Date.now(); save(); queueSync();
 }
@@ -447,6 +454,7 @@ function drawDone() {
       <p>${pct >= 100 ? 'Sempurna, semua kartu sudah hafal.' : pct >= 80 ? 'Hebat, hampir semua sudah hafal.' : pct >= 50 ? 'Bagus, tinggal sedikit lagi.' : 'Tidak apa-apa, ulangi yang belum hafal ya.'}</p>
       <div class="stats3 fstats"><div><b style="color:var(--green)">${ST.yes}</b><small>Hafal</small></div><div><b style="color:var(--orange)">${ST.no}</b><small>Belum hafal</small></div><div><b>${dur}</b><small>Waktu</small></div></div>
       ${all ? '<div class="alldone">🔥 Semua tugas hari ini selesai! Streak bertambah.</div>' : ''}
+      ${mottoHTML('small')}
       <div class="factions">
         ${next ? `<button class="btn primary" id="nxt">Lanjut ke ${DECKS[next.dk].name} →</button>` : ''}
         ${ST.missed.length ? `<button class="btn ${next ? 'ghost' : 'primary'}" id="again">Ulangi ${ST.missed.length} yang belum hafal</button>` : ''}
@@ -472,7 +480,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------- admin ---------- */
-let AD = null, adQ = '', adDay = todayKey();
+let AD = null, adQ = '', adDay = todayKey(), adF = 'all';
 function adminPass() { try { return sessionStorage.getItem('mna.admin') || ''; } catch { return ''; } }
 async function renderAdmin() {
   const pass = adminPass();
@@ -486,23 +494,31 @@ async function renderAdmin() {
   }
   if (!AD) { $app.innerHTML = '<div class="spin"></div>'; try { AD = await api('admin', null, { 'x-admin-pass': pass }); } catch (e) { sessionStorage.removeItem('mna.admin'); return renderAdmin(); } }
   const cfg = AD.config?.daily || CONFIG.daily;
-  const st = AD.students.map(s => { const d = (s.days || {})[adDay] || {}; const done = ['k', 'j', 'b'].filter(k => d[k] && d[k][1] > 0 && d[k][0] >= d[k][1]); return { ...s, d, done }; })
-    .filter(s => !adQ || (s.name + ' ' + s.email).toLowerCase().includes(adQ)).sort((a, b) => b.done.length - a.done.length || (b.lastSeen || 0) - (a.lastSeen || 0));
+  const wk = []; for (let i = 6; i >= 0; i--) wk.push(dayShift(adDay, -i));
+  const dayState = (s, d) => { const r = (s.days || {})[d]; if (!r || !r.n) return 0; return lvPct(r) >= 100 ? 2 : 1; };
+  const stAll = AD.students.map(s => { const d = (s.days || {})[adDay] || {}; const done = ['k', 'j', 'b'].filter(k => d[k] && d[k][1] > 0 && d[k][0] >= d[k][1]); const pct = lvPct(d); const did = !!d.n; const week = wk.map(x => dayState(s, x)); return { ...s, d, done, pct, did, week, wact: week.filter(Boolean).length }; });
+  const st = stAll.filter(s => !adQ || (s.name + ' ' + s.email).toLowerCase().includes(adQ)).filter(s => adF === 'all' || (adF === 'yes' ? s.did : !s.did))
+    .sort((a, b) => b.pct - a.pct || b.wact - a.wact || (b.lastSeen || 0) - (a.lastSeen || 0));
   const all = AD.students.length; const active = AD.students.filter(s => (s.days || {})[adDay] && s.days[adDay].n).length;
   const full = AD.students.filter(s => { const d = (s.days || {})[adDay] || {}; return ['k', 'j', 'b'].every(k => d[k] && d[k][1] > 0 && d[k][0] >= d[k][1]); }).length;
   const isToday = adDay === todayKey();
   $app.innerHTML = `<div class="screen" style="padding-bottom:40px">
     <div class="row"><h1 class="largeTitle" style="flex:1">Monitoring</h1><button class="iconbtn" id="cfg" aria-label="Pengaturan">${I.gear}</button><button class="iconbtn" id="lo" aria-label="Keluar">${I.x}</button></div>
     <div class="row" style="margin:0 0 16px"><button class="iconbtn" id="pd">‹</button><div style="flex:1;text-align:center;font-weight:700">${isToday ? 'Hari ini · ' : ''}${new Date(adDay + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</div><button class="iconbtn" id="nd" ${isToday ? 'disabled style="opacity:.3"' : ''}>›</button></div>
-    <div class="tiles"><div class="card tile"><b>${all}</b><small>Siswa terdaftar</small></div><div class="card tile"><b style="color:var(--accent)">${active}</b><small>Belajar ${isToday ? 'hari ini' : ''}</small></div><div class="card tile"><b style="color:var(--green)">${full}</b><small>Tugas lengkap</small></div></div>
-    <div class="section">Siswa · target ${(AD.config?.mode || 'level') === 'level' ? 'tamat 1 level/hari' : cfg.k + ' kotoba, ' + cfg.j + ' kanji, ' + cfg.b + ' pola/hari'}</div>
+    <div class="adlv">Giliran level: <b>${dayLevel(adDay)}</b> · ${(AD.config?.mode || 'level') === 'level' ? 'target tamat 1 level' : cfg.k + ' kotoba, ' + cfg.j + ' kanji, ' + cfg.b + ' pola'}</div>
+    <div class="tiles"><div class="card tile"><b style="color:var(--green)">${active}</b><small>Sudah fukushu</small></div><div class="card tile"><b style="color:var(--orange)">${all - active}</b><small>Belum fukushu</small></div><div class="card tile"><b style="color:var(--accent)">${full}</b><small>Tamat level</small></div></div>
+    <div class="section">Siswa (${all})</div>
+    <div class="seg" id="adf" style="margin-bottom:10px">${[['all', 'Semua'], ['yes', 'Sudah fukushu'], ['no', 'Belum fukushu']].map(([k, t]) => `<button data-f="${k}" class="${adF === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     <input class="search" id="q" placeholder="Cari nama atau email" value="${esc(adQ)}">
     <div class="card list">${st.length ? st.map(s => `<button class="li" data-sid="${esc(s.id)}"><div class="avatar" style="width:40px;height:40px;font-size:15px">${esc((s.name || '?')[0].toUpperCase())}</div>
-      <div style="flex:1;min-width:0"><div class="tt">${esc(s.name)}</div><div class="ts" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.level || '')} · ${lvPct(s.d)}% hari ini · ${s.lastSeen ? 'aktif ' + ago(s.lastSeen) : 'belum aktif'}</div></div>
-      <div class="dots">${['k', 'j', 'b'].map(k => `<span class="dot ${s.done.includes(k) ? 'on' : ''}" title="${DECKS[k].name}">${DECKS[k].ico}</span>`).join('')}</div></button>`).join('') : '<div class="empty">Belum ada siswa yang cocok.</div>'}</div>
+      <div style="flex:1;min-width:0"><div class="tt">${esc(s.name)}</div><div class="ts ${s.did ? 'okc' : 'noc'}">${s.did ? (s.pct >= 100 ? 'Tamat ' + dayLevel(adDay) + ' ✓' : 'Sudah fukushu · ' + s.pct + '%') : 'Belum fukushu'}</div>
+        <div class="wk" title="7 hari terakhir">${s.week.map(x => `<i class="w${x}"></i>`).join('')}<span>${s.wact}/7 hari</span></div></div>
+      <div class="pct ${s.pct >= 100 ? 'full' : s.did ? 'part' : ''}">${s.pct}%</div></button>`).join('') : '<div class="empty">Tidak ada siswa di sini.</div>'}</div>
+    <p class="sub" style="font-size:12.5px;margin:10px 4px 0">Kotak 7 hari: <i class="lg w2"></i> tamat · <i class="lg w1"></i> fukushu sebagian · <i class="lg w0"></i> tidak fukushu</p>
     <div class="row" style="margin-top:16px;gap:10px"><button class="btn ghost" id="rf">Muat ulang</button><button class="btn ghost" id="csv">Unduh CSV</button></div>
   </div>`;
   const q = document.getElementById('q'); q.oninput = () => { adQ = q.value.toLowerCase(); const pos = q.selectionStart; renderAdmin().then(() => { const n = document.getElementById('q'); n.focus(); n.setSelectionRange(pos, pos); }); };
+  document.getElementById('adf').onclick = e => { const b = e.target.closest('[data-f]'); if (b) { adF = b.dataset.f; renderAdmin(); } };
   document.getElementById('pd').onclick = () => { adDay = dayShift(adDay, -1); renderAdmin(); };
   document.getElementById('nd').onclick = () => { if (!isToday) { adDay = dayShift(adDay, 1); renderAdmin(); } };
   document.getElementById('rf').onclick = () => { AD = null; renderAdmin(); };
