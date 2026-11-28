@@ -91,7 +91,12 @@ function dayLevel(k = todayKey()) { const d = Math.round((new Date(k + 'T12:00:0
 const MOTTO = '<span><ruby>頑張<rt>がんば</rt></ruby>ってね！</span><br><span>みんなのご<ruby>飯<rt>はん</rt></ruby>が、</span><span>いつも<ruby>温<rt>あたた</rt></ruby>かくありますように。</span>';
 const mottoHTML = (cls = '') => `<div class="motto ${cls}"><p class="mjp" lang="ja">${MOTTO}</p><p class="mid">Semangat ya, semoga nasi kalian selalu hangat.</p></div>`;
 function dayRec(k = todayKey()) { return (S.days[k] ||= {}); }
-function taskDone(dk, k = todayKey()) { const r = S.days[k]; return !!(r && r[dk] && r[dk][0] >= r[dk][1] && r[dk][1] > 0); }
+const LV_TOTAL = { 'A1': { k: 1294, j: 90, b: 71 }, 'A2.1': { k: 1193, j: 182, b: 78 }, 'A2.2': { k: 1789, j: 177, b: 79 } };
+// Target of a day: every card of that day's level (or the admin's fixed counts in 'count' mode)
+function dayTarget(d, cfg = CONFIG) { const T = LV_TOTAL[dayLevel(d)]; if ((cfg.mode || 'level') === 'level') return T; const c = cfg.daily || {}; return { k: Math.min(c.k || 0, T.k), j: Math.min(c.j || 0, T.j), b: Math.min(c.b || 0, T.b) }; }
+function lvPct(r, d, cfg) { const T = dayTarget(d, cfg); let a = 0, t = 0; for (const k of ['k', 'j', 'b']) { t += T[k]; a += Math.min(r && r[k] ? Number(r[k][0]) || 0 : 0, T[k]); } return t ? Math.floor(100 * a / t) : 0; }
+function lvFull(r, d, cfg) { const T = dayTarget(d, cfg); return ['k', 'j', 'b'].every(k => r && r[k] && (Number(r[k][0]) || 0) >= T[k]); }
+function taskDone(dk, k = todayKey()) { const r = S.days[k]; return !!(r && r[dk] && r[dk][0] >= dayTarget(k)[dk]); }
 function streak() { let n = 0; let k = todayKey(); if (!allDone(k)) k = dayShift(k, -1); while (allDone(k)) { n++; k = dayShift(k, -1); } return n; }
 function allDone(k) { return ['k', 'j', 'b'].every(dk => taskDone(dk, k)); }
 function anyDone(k) { const r = S.days[k]; return !!(r && (r.n || 0) > 0); }
@@ -318,7 +323,7 @@ function startStudy(lv, dk, idx, opt = {}) {
   const el = document.createElement('div'); el.className = 'study'; el.id = 'study'; document.body.appendChild(el); document.body.style.overflow = 'hidden';
   drawStudy();
 }
-function closeStudy() { document.getElementById('study')?.remove(); document.querySelectorAll('.confetti').forEach(x => x.remove()); document.body.style.overflow = ''; if (window.AndroidTTS) { try { AndroidTTS.stop(); } catch {} } else if ('speechSynthesis' in window) speechSynthesis.cancel(); ST = null; render(); }
+function closeStudy() { if (window.__mnaPending && window.__mnaPending()) { ST = null; return location.reload(); } document.getElementById('study')?.remove(); document.querySelectorAll('.confetti').forEach(x => x.remove()); document.body.style.overflow = ''; if (window.AndroidTTS) { try { AndroidTTS.stop(); } catch {} } else if ('speechSynthesis' in window) speechSynthesis.cancel(); ST = null; render(); }
 function jpSize(t) { const n = [...String(t).replace(/[（(][^）)]*[）)]/g, '')].length; return n <= 2 ? 'xl' : n <= 4 ? 'l' : n <= 7 ? 'm' : n <= 12 ? 's' : 'xs'; }
 function patHTML(p) { return esc(p).replace(/(^|[^A-Za-z])(N[12]?|S[12]?|V|イA|ナA)(?![a-z])/g, '$1<b class="sym">$2</b>'); }
 function faceHTML(c, side) {
@@ -495,26 +500,26 @@ async function renderAdmin() {
   if (!AD) { $app.innerHTML = '<div class="spin"></div>'; try { AD = await api('admin', null, { 'x-admin-pass': pass }); } catch (e) { sessionStorage.removeItem('mna.admin'); return renderAdmin(); } }
   const cfg = AD.config?.daily || CONFIG.daily;
   const wk = []; for (let i = 6; i >= 0; i--) wk.push(dayShift(adDay, -i));
-  const dayState = (s, d) => { const r = (s.days || {})[d]; if (!r || !r.n) return 0; return lvPct(r) >= 100 ? 2 : 1; };
-  const stAll = AD.students.map(s => { const d = (s.days || {})[adDay] || {}; const done = ['k', 'j', 'b'].filter(k => d[k] && d[k][1] > 0 && d[k][0] >= d[k][1]); const pct = lvPct(d); const did = !!d.n; const week = wk.map(x => dayState(s, x)); return { ...s, d, done, pct, did, week, wact: week.filter(Boolean).length }; });
-  const st = stAll.filter(s => !adQ || (s.name + ' ' + s.email).toLowerCase().includes(adQ)).filter(s => adF === 'all' || (adF === 'yes' ? s.did : !s.did))
-    .sort((a, b) => b.pct - a.pct || b.wact - a.wact || (b.lastSeen || 0) - (a.lastSeen || 0));
-  const all = AD.students.length; const active = AD.students.filter(s => (s.days || {})[adDay] && s.days[adDay].n).length;
-  const full = AD.students.filter(s => { const d = (s.days || {})[adDay] || {}; return ['k', 'j', 'b'].every(k => d[k] && d[k][1] > 0 && d[k][0] >= d[k][1]); }).length;
+  const AC = AD.config || CONFIG;
+  const dayState = (s, d) => { const r = (s.days || {})[d]; if (lvFull(r, d, AC)) return 2; return r && r.n ? 1 : 0; };
+  const stAll = AD.students.map(s => { const d = (s.days || {})[adDay] || {}; const pct = lvPct(d, adDay, AC); const fin = lvFull(d, adDay, AC); const did = !!d.n; const week = wk.map(x => dayState(s, x)); return { ...s, d, pct, fin, did, week, wfull: week.filter(x => x === 2).length }; });
+  const st = stAll.filter(s => !adQ || (s.name + ' ' + s.email).toLowerCase().includes(adQ)).filter(s => adF === 'all' || (adF === 'yes' ? s.fin : !s.fin))
+    .sort((a, b) => b.pct - a.pct || b.wfull - a.wfull || (b.lastSeen || 0) - (a.lastSeen || 0));
+  const all = stAll.length; const full = stAll.filter(s => s.fin).length; const prog = stAll.filter(s => !s.fin && s.did).length; const none = all - full - prog;
   const isToday = adDay === todayKey();
   $app.innerHTML = `<div class="screen" style="padding-bottom:40px">
     <div class="row"><h1 class="largeTitle" style="flex:1">Monitoring</h1><button class="iconbtn" id="cfg" aria-label="Pengaturan">${I.gear}</button><button class="iconbtn" id="lo" aria-label="Keluar">${I.x}</button></div>
     <div class="row" style="margin:0 0 16px"><button class="iconbtn" id="pd">‹</button><div style="flex:1;text-align:center;font-weight:700">${isToday ? 'Hari ini · ' : ''}${new Date(adDay + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</div><button class="iconbtn" id="nd" ${isToday ? 'disabled style="opacity:.3"' : ''}>›</button></div>
-    <div class="adlv">Giliran level: <b>${dayLevel(adDay)}</b> · ${(AD.config?.mode || 'level') === 'level' ? 'target tamat 1 level' : cfg.k + ' kotoba, ' + cfg.j + ' kanji, ' + cfg.b + ' pola'}</div>
-    <div class="tiles"><div class="card tile"><b style="color:var(--green)">${active}</b><small>Sudah fukushu</small></div><div class="card tile"><b style="color:var(--orange)">${all - active}</b><small>Belum fukushu</small></div><div class="card tile"><b style="color:var(--accent)">${full}</b><small>Tamat level</small></div></div>
+    <div class="adlv">Giliran level: <b>${dayLevel(adDay)}</b> · ${(AC.mode || 'level') === 'level' ? `"Sudah fukushu" = tamat semua ${dayLevel(adDay)} (${(() => { const T = LV_TOTAL[dayLevel(adDay)]; return (T.k + T.j + T.b).toLocaleString('id-ID'); })()} kartu)` : `target ${cfg.k} kotoba, ${cfg.j} kanji, ${cfg.b} pola`}</div>
+    <div class="tiles"><div class="card tile"><b style="color:var(--green)">${full}</b><small>Sudah fukushu (tamat ${dayLevel(adDay)})</small></div><div class="card tile"><b style="color:var(--amber)">${prog}</b><small>Belum tamat</small></div><div class="card tile"><b style="color:var(--orange)">${none}</b><small>Belum mulai</small></div></div>
     <div class="section">Siswa (${all})</div>
-    <div class="seg" id="adf" style="margin-bottom:10px">${[['all', 'Semua'], ['yes', 'Sudah fukushu'], ['no', 'Belum fukushu']].map(([k, t]) => `<button data-f="${k}" class="${adF === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <div class="seg" id="adf" style="margin-bottom:10px">${[['all', 'Semua'], ['yes', 'Sudah fukushu'], ['no', 'Belum']].map(([k, t]) => `<button data-f="${k}" class="${adF === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     <input class="search" id="q" placeholder="Cari nama atau email" value="${esc(adQ)}">
     <div class="card list">${st.length ? st.map(s => `<button class="li" data-sid="${esc(s.id)}"><div class="avatar" style="width:40px;height:40px;font-size:15px">${esc((s.name || '?')[0].toUpperCase())}</div>
-      <div style="flex:1;min-width:0"><div class="tt">${esc(s.name)}</div><div class="ts ${s.did ? 'okc' : 'noc'}">${s.did ? (s.pct >= 100 ? 'Tamat ' + dayLevel(adDay) + ' ✓' : 'Sudah fukushu · ' + s.pct + '%') : 'Belum fukushu'}</div>
-        <div class="wk" title="7 hari terakhir">${s.week.map(x => `<i class="w${x}"></i>`).join('')}<span>${s.wact}/7 hari</span></div></div>
-      <div class="pct ${s.pct >= 100 ? 'full' : s.did ? 'part' : ''}">${s.pct}%</div></button>`).join('') : '<div class="empty">Tidak ada siswa di sini.</div>'}</div>
-    <p class="sub" style="font-size:12.5px;margin:10px 4px 0">Kotak 7 hari: <i class="lg w2"></i> tamat · <i class="lg w1"></i> fukushu sebagian · <i class="lg w0"></i> tidak fukushu</p>
+      <div style="flex:1;min-width:0"><div class="tt">${esc(s.name)}</div><div class="ts ${s.fin ? 'okc' : s.did ? 'midc' : 'noc'}">${s.fin ? 'Sudah fukushu · tamat ' + dayLevel(adDay) + ' ✓' : s.did ? 'Belum tamat · ' + dayLevel(adDay) + ' ' + s.pct + '%' : 'Belum mulai fukushu'}</div>
+        <div class="wk" title="7 hari terakhir">${s.week.map(x => `<i class="w${x}"></i>`).join('')}<span>tamat ${s.wfull}/7 hari</span></div></div>
+      <div class="pct ${s.fin ? 'full' : s.did ? 'part' : ''}">${s.pct}%</div></button>`).join('') : '<div class="empty">Tidak ada siswa di sini.</div>'}</div>
+    <p class="sub" style="font-size:12.5px;margin:10px 4px 0">Kotak 7 hari: <i class="lg w2"></i> tamat level · <i class="lg w1"></i> belum tamat · <i class="lg w0"></i> tidak fukushu</p>
     <div class="row" style="margin-top:16px;gap:10px"><button class="btn ghost" id="rf">Muat ulang</button><button class="btn ghost" id="csv">Unduh CSV</button></div>
   </div>`;
   const q = document.getElementById('q'); q.oninput = () => { adQ = q.value.toLowerCase(); const pos = q.selectionStart; renderAdmin().then(() => { const n = document.getElementById('q'); n.focus(); n.setSelectionRange(pos, pos); }); };
@@ -530,18 +535,18 @@ async function renderAdmin() {
 function ago(t) { const m = Math.round((Date.now() - t) / 60000); if (m < 1) return 'baru saja'; if (m < 60) return m + ' menit lalu'; const h = Math.round(m / 60); if (h < 24) return h + ' jam lalu'; return Math.round(h / 24) + ' hari lalu'; }
 function studentSheet(s) {
   if (!s) return; const days = []; for (let i = 13; i >= 0; i--) days.push(dayShift(todayKey(), -i));
-  let stk = 0; { let k = todayKey(); const full = d => { const r = (s.days || {})[d] || {}; return ['k', 'j', 'b'].every(x => r[x] && r[x][1] > 0 && r[x][0] >= r[x][1]); }; if (!full(k)) k = dayShift(k, -1); while (full(k)) { stk++; k = dayShift(k, -1); } }
+  let stk = 0; { let k = todayKey(); const full = d => lvFull((s.days || {})[d], d, AD.config || CONFIG); if (!full(k)) k = dayShift(k, -1); while (full(k)) { stk++; k = dayShift(k, -1); } }
   const lv = s.level || 'A1'; const m = (s.mastered || {})[lv] || {}; const tot = (s.totals || {})[lv] || TOTALS[lv] || {};
   const bg = document.createElement('div'); bg.className = 'sheetBg';
   bg.innerHTML = `<div class="sheet"><div class="grab"></div><div class="row"><div class="avatar">${esc((s.name || '?')[0].toUpperCase())}</div><div style="min-width:0"><h3>${esc(s.name)}</h3><div class="sub" style="margin:0">${esc(s.email)}</div></div></div>
     <div class="stats3"><div><b>🔥 ${stk}</b><small>Streak</small></div><div><b>${Object.values(s.days || {}).filter(d => d.n).length}</b><small>Hari aktif</small></div><div><b>${esc(lv)}</b><small>Level</small></div></div>
     <div class="section" style="margin-left:2px">Aktivitas 14 hari</div>
-    <div class="heat">${days.map(d => { const r = (s.days || {})[d] || {}; const c = ['k', 'j', 'b'].filter(x => r[x] && r[x][1] > 0 && r[x][0] >= r[x][1]).length; return `<i class="${c ? 'l' + c : ''}" title="${d}: ${r.n || 0} kartu"></i>`; }).join('')}</div>
-    <div class="sub" style="font-size:12px;margin:0 2px">Semakin pekat = semakin banyak tugas harian selesai</div>
+    <div class="heat">${days.map(d => { const r = (s.days || {})[d] || {}; const c = lvFull(r, d, AD.config || CONFIG) ? 3 : r.n ? 1 : 0; return `<i class="${c ? 'l' + c : ''}" title="${d} (${dayLevel(d)}): ${lvPct(r, d, AD.config || CONFIG)}%"></i>`; }).join('')}</div>
+    <div class="sub" style="font-size:12px;margin:0 2px">Pekat = tamat level hari itu · muda = belum tamat · kosong = tidak fukushu</div>
     <div class="section" style="margin-left:2px">Kartu hafal (${esc(lv)})</div>
     ${['k', 'j', 'b'].map(k => `<div class="optrow"><span>${DECKS[k].name}</span><b>${m[k] || 0} / ${tot[k] || '–'}</b></div>`).join('')}
     <div class="section" style="margin-left:2px">Riwayat</div>
-    ${days.slice().reverse().filter(d => (s.days || {})[d]).slice(0, 10).map(d => { const r = s.days[d]; return `<div class="optrow"><span>${new Date(d + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</span><span style="color:var(--ink2);font-size:14px">${r.n || 0} kartu · ${Math.round((r.ms || 0) / 60000)} mnt · ${lvPct(r)}% · ${['k', 'j', 'b'].map(k => DECKS[k].ico + ' ' + (r[k] ? r[k][0] + '/' + r[k][1] : '0')).join('  ')}</span></div>`; }).join('') || '<div class="empty">Belum ada aktivitas.</div>'}
+    ${days.slice().reverse().filter(d => (s.days || {})[d]).slice(0, 10).map(d => { const r = s.days[d]; return `<div class="optrow"><span>${new Date(d + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</span><span style="color:var(--ink2);font-size:14px">${dayLevel(d)} · ${lvFull(r, d, AD.config || CONFIG) ? 'tamat ✓' : lvPct(r, d, AD.config || CONFIG) + '%'} · ${Math.round((r.ms || 0) / 60000)} mnt<br>${(() => { const T = dayTarget(d, AD.config || CONFIG); return ['k', 'j', 'b'].map(k => DECKS[k].ico + ' ' + Math.min(r[k] ? r[k][0] : 0, T[k]) + '/' + T[k]).join('  '); })()}</span></div>`; }).join('') || '<div class="empty">Belum ada aktivitas.</div>'}
     <button class="btn ghost" style="margin-top:14px" data-close>Tutup</button>
     <button class="btn ghost" style="margin-top:10px;color:#e5484d" data-del>Hapus siswa ini</button></div>`;
   document.body.appendChild(bg); bg.onclick = async e => {
@@ -551,7 +556,6 @@ function studentSheet(s) {
     }
   };
 }
-function lvPct(r) { let d = 0, t = 0; for (const k of ['k', 'j', 'b']) if (r && r[k] && r[k][1]) { d += Math.min(r[k][0], r[k][1]); t += r[k][1]; } return t ? Math.floor(100 * d / t) : 0; }
 function configSheet(cfg) {
   const mode = (AD.config && AD.config.mode) || 'level';
   const bg = document.createElement('div'); bg.className = 'sheetBg';
@@ -571,7 +575,7 @@ function configSheet(cfg) {
 function exportCSV() {
   const days = []; for (let i = 13; i >= 0; i--) days.push(dayShift(todayKey(), -i));
   const rows = [['Nama', 'Email', 'Level', 'Terakhir aktif', ...days]];
-  for (const s of AD.students) rows.push([s.name, s.email, s.level, s.lastSeen ? new Date(s.lastSeen).toLocaleString('id-ID') : '', ...days.map(d => { const r = (s.days || {})[d]; if (!r) return ''; return ['k', 'j', 'b'].filter(k => r[k] && r[k][1] && r[k][0] >= r[k][1]).length + '/3 (' + (r.n || 0) + ' kartu)'; })]);
+  for (const s of AD.students) rows.push([s.name, s.email, s.level, s.lastSeen ? new Date(s.lastSeen).toLocaleString('id-ID') : '', ...days.map(d => { const r = (s.days || {})[d]; if (!r) return ''; return dayLevel(d) + ' ' + (lvFull(r, d, AD.config || CONFIG) ? 'TAMAT' : lvPct(r, d, AD.config || CONFIG) + '%'); })]);
   const csv = rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = 'monitoring-siswa-' + todayKey() + '.csv'; a.click();
 }
@@ -579,5 +583,12 @@ function exportCSV() {
 /* ---------- boot ---------- */
 render();
 if (S.user) queueSync();
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('/sw.js').catch(() => {});
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  // A new version activated: reload once so everyone runs the latest rules (wait if a study session is open)
+  let had = !!navigator.serviceWorker.controller, pending = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (!had) { had = true; return; } pending = true; if (!ST) location.reload(); });
+  document.addEventListener('visibilitychange', () => { if (pending && !ST && document.visibilityState === 'visible') location.reload(); });
+  window.__mnaPending = () => pending;
+  navigator.serviceWorker.register('/sw.js').then(r => r.update()).catch(() => {});
+}
 })();

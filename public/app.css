@@ -1,7 +1,7 @@
 :root{
   --bg:#f5fbfb;--bg2:#ffffff;--card:#ffffffd9;--solid:#ffffff;--ink:#0d2f33;--ink2:#5b7477;--ink3:#9db3b5;
   --line:#dcefef;--fill:#ecf6f6;--accent:#0aa39c;--accent2:#40d2c6;--accent-ink:#fff;--accentSoft:#daf4f1;--deep:#06706d;
-  --green:#0aa39c;--greenSoft:#d9f4f1;--orange:#ef7d5a;--orangeSoft:#fdebe4;--violet:#2c6fae;--violetSoft:#e1ecf7;
+  --green:#0aa39c;--greenSoft:#d9f4f1;--orange:#ef7d5a;--amber:#b7800c;--orangeSoft:#fdebe4;--violet:#2c6fae;--violetSoft:#e1ecf7;
   --blue:#1596bf;--blueSoft:#dcf1f8;--shadow:0 1px 2px rgba(6,60,62,.04),0 10px 30px rgba(6,90,92,.08);
   --shadow2:0 14px 34px rgba(6,90,92,.13);--r:22px;--glass:rgba(255,255,255,.97);
   --serif:"Shippori Mincho B1","Shippori Mincho","Hiragino Mincho ProN","Noto Serif JP",serif;
@@ -11,11 +11,11 @@
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#061416;--bg2:#0c1f22;--card:#0f2528d9;--solid:#10272a;--ink:#eefaf9;--ink2:#9fbcbe;--ink3:#5f7d80;--accent:#2cc8bd;--accent2:#6fe3d8;--deep:#7fe9df;
-  --line:#1d3a3d;--fill:#15302f;--accentSoft:#0f3634;--green:#2cc8bd;--greenSoft:#0f3634;--orangeSoft:#3a2219;--violet:#6aa6e0;--violetSoft:#14293d;--blueSoft:#0f2f3a;--blue:#4cc1e6;
+  --line:#1d3a3d;--fill:#15302f;--accentSoft:#0f3634;--green:#2cc8bd;--amber:#eab54a;--greenSoft:#0f3634;--orangeSoft:#3a2219;--violet:#6aa6e0;--violetSoft:#14293d;--blueSoft:#0f2f3a;--blue:#4cc1e6;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.35);--shadow2:0 14px 34px rgba(0,0,0,.5);--glass:rgba(12,31,34,.97);color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#061416;--bg2:#0c1f22;--card:#0f2528d9;--solid:#10272a;--ink:#eefaf9;--ink2:#9fbcbe;--ink3:#5f7d80;--accent:#2cc8bd;--accent2:#6fe3d8;--deep:#7fe9df;
-  --line:#1d3a3d;--fill:#15302f;--accentSoft:#0f3634;--green:#2cc8bd;--greenSoft:#0f3634;--orangeSoft:#3a2219;--violet:#6aa6e0;--violetSoft:#14293d;--blueSoft:#0f2f3a;--blue:#4cc1e6;
+  --line:#1d3a3d;--fill:#15302f;--accentSoft:#0f3634;--green:#2cc8bd;--amber:#eab54a;--greenSoft:#0f3634;--orangeSoft:#3a2219;--violet:#6aa6e0;--violetSoft:#14293d;--blueSoft:#0f2f3a;--blue:#4cc1e6;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.35);--shadow2:0 14px 34px rgba(0,0,0,.5);--glass:rgba(12,31,34,.97);color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%}
@@ -297,6 +297,7 @@ details.exp[open] summary{margin-bottom:6px}
 .wk i.w1,.lg.w1{background:#9be8df}.wk i.w2,.lg.w2{background:var(--accent)}
 .wk span{font-size:11.5px;color:var(--ink3);font-weight:600;margin-left:6px}
 .lg{vertical-align:-1px;margin:0 2px}
-.li .pct{font-weight:800;font-size:16px;color:var(--ink3);min-width:48px;text-align:right}.li .pct.part{color:var(--accent)}.li .pct.full{color:var(--green)}
+.li .pct{font-weight:800;font-size:16px;color:var(--ink3);min-width:48px;text-align:right}.li .pct.part{color:var(--amber)}.li .pct.full{color:var(--green)}
 .motto .mjp span{display:inline-block}
 .lg.w0{box-shadow:inset 0 0 0 1px var(--line);background:var(--solid)}
+.li .ts.midc{color:var(--amber);font-weight:700}
