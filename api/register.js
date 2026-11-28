@@ -19,6 +19,6 @@ module.exports = async (req, res) => {
     await L.writeJSON(idxPath, { id });
     return L.send(res, 200, { id, token, name, level, existing: false });
   } catch (e) {
-    console.error(e); return L.send(res, 500, { error: 'Server sedang sibuk, coba lagi sebentar.' });
+    console.error(e); return L.send(res, 503, { error: L.storageError(e), retry: !L.isSuspended(e) });
   }
 };

@@ -28,11 +28,23 @@ let tt;
 function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2200); }
 
 /* ---------- api ---------- */
-async function api(path, body, headers = {}) {
-  const r = await fetch('/api/' + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', ...headers }, body: body ? JSON.stringify(body) : undefined });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-  return j;
+async function api(path, body, headers = {}, tries = 3) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch('/api/' + path, { method: body ? 'POST' : 'GET', headers: { 'content-type': 'application/json', ...headers }, body: body ? JSON.stringify(body) : undefined });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) return j;
+      last = new Error(j.error || ('HTTP ' + r.status));
+      // only retry when the server says it may help (busy / network), never on bad input
+      if (!(r.status >= 500 || r.status === 429) || j.retry === false) throw last;
+    } catch (e) {
+      last = e;
+      if (!(e instanceof TypeError) && !/HTTP 5|sibuk|^sync$/i.test(e.message)) throw e;
+    }
+    if (i < tries - 1) await new Promise(res => setTimeout(res, 800 * Math.pow(2, i)));
+  }
+  throw last;
 }
 let CONFIG = { mode: 'level', daily: { k: 20, j: 10, b: 5 } };
 const fullLevel = () => (CONFIG.mode || 'level') === 'level';
@@ -40,8 +52,9 @@ try { const cc = JSON.parse(localStorage.getItem('mna.cfg')); if (cc && cc.daily
 api('config').then(c => { if (c && c.daily) { c.mode = c.mode || 'level'; const changed = JSON.stringify(c.daily) !== JSON.stringify(CONFIG.daily) || c.mode !== CONFIG.mode; CONFIG = c; try { localStorage.setItem('mna.cfg', JSON.stringify(c)); } catch {} if (changed && route === 'home') render(); } }).catch(() => {});
 
 let syncTimer;
-function queueSync(now) { clearTimeout(syncTimer); syncTimer = setTimeout(sync, now ? 10 : 1500); }
+function queueSync(now) { if (now) { clearTimeout(syncTimer); syncTimer = setTimeout(sync, 10); } else if (!syncTimer) syncTimer = setTimeout(sync, 30000); }
 async function sync() {
+  clearTimeout(syncTimer); syncTimer = null;
   if (!S.user) return;
   const mastered = {};
   for (const k in S.cards) if (S.cards[k].s === 1) { const [lv, dk] = k.split('|'); (mastered[lv] ||= { k: 0, j: 0, b: 0 })[dk]++; }
@@ -170,13 +183,13 @@ function renderOnboard() {
     e.preventDefault(); const f = new FormData(e.target); const btn = e.target.querySelector('.btn');
     const name = String(f.get('name')).trim(), email = String(f.get('email')).trim().toLowerCase();
     if (name.length < 2) return document.getElementById('err').textContent = 'Nama minimal 2 huruf.';
-    btn.disabled = true; btn.textContent = 'Menyimpan…';
+    btn.disabled = true; btn.textContent = 'Menyimpan… (mohon tunggu)'; document.getElementById('err').textContent = '';
     try {
       const r = await api('register', { name, email, level: lv });
       S.user = { id: r.id, token: r.token, name: r.name || name, email, level: r.existing && r.level ? r.level : lv };
       if (r.days) for (const d in r.days) S.days[d] ||= r.days[d];
       save(); toast(r.existing ? 'おかえり, ' + S.user.name + '!' : 'ようこそ! Pendaftaran berhasil'); go('home');
-    } catch (err) { document.getElementById('err').textContent = err.message === 'Failed to fetch' ? 'Tidak ada koneksi internet.' : err.message; btn.disabled = false; btn.textContent = 'Daftar & Mulai Belajar'; }
+    } catch (err) { document.getElementById('err').textContent = err instanceof TypeError ? 'Koneksi internet terputus. Cek sinyal/Wi-Fi lalu coba lagi.' : err.message; btn.disabled = false; btn.textContent = 'Daftar & Mulai Belajar'; }
   };
 }
 

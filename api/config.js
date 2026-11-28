@@ -10,6 +10,7 @@ module.exports = async (req, res) => {
       return L.send(res, 200, cfg);
     }
     const cfg = await L.readJSON('config.json');
-    return L.send(res, 200, cfg ? { mode: cfg.mode || 'level', daily: cfg.daily || L.DEFAULT_CONFIG.daily } : L.DEFAULT_CONFIG);
+    res.setHeader('cache-control', 'public, s-maxage=60, stale-while-revalidate=600');
+    return res.status(200).json(cfg ? { mode: cfg.mode || 'level', daily: cfg.daily || L.DEFAULT_CONFIG.daily } : L.DEFAULT_CONFIG);
   } catch (e) { console.error(e); return L.send(res, 200, L.DEFAULT_CONFIG); }
 };
