@@ -233,7 +233,7 @@ details.exp[open] summary{margin-bottom:6px}
 /* mission hero */
 .mission{position:relative;overflow:hidden;border-radius:26px;padding:20px 20px 18px;color:#fff;
   background:linear-gradient(150deg,#3fcfc3 0%,#0aa39c 45%,#06646d 100%);box-shadow:0 14px 30px rgba(6,100,109,.28)}
-.mission::after{content:"";position:absolute;right:-30px;bottom:-40px;width:220px;height:140px;opacity:.16;pointer-events:none;
+.mission::after{content:"";position:absolute;right:-20px;top:-26px;width:200px;height:110px;opacity:.13;pointer-events:none;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='20' viewBox='0 0 40 20'%3E%3Cg fill='none' stroke='%23fff'%3E%3Cpath d='M0 20a20 20 0 0 1 40 0M6 20a14 14 0 0 1 28 0M12 20a8 8 0 0 1 16 0M-20 10a20 20 0 0 1 40 0M20 10a20 20 0 0 1 40 0'/%3E%3C/g%3E%3C/svg%3E")}
 .mtop{display:flex;justify-content:space-between;align-items:center}
 .mlabel{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.85}
