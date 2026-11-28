@@ -172,9 +172,10 @@ function renderOnboard() {
 
 /* ---------- home ---------- */
 function greetWord() { const h = new Date().getHours(); return h < 11 ? 'おはよう' : h < 18 ? 'こんにちは' : 'こんばんは'; }
+function todayParts(lv) { const sets = dailySet(lv), rec = dayRec(); return ['k', 'j', 'b'].map(dk => { const tot = sets[dk].length; const done = Math.min(rec[dk] ? rec[dk][0] : 0, tot); return { dk, tot, done }; }); }
 function renderHome() {
   const lv = S.user.level; const sets = dailySet(lv); const rec = dayRec();
-  const parts = ['k', 'j', 'b'].map(dk => { const tot = sets[dk].length; const done = Math.min(rec[dk] ? rec[dk][0] : 0, tot); return { dk, tot, done }; });
+  const parts = todayParts(lv);
   const pct = parts.every(p => p.tot && p.done >= p.tot) ? 100 : 0;
   const st = streak(); const sumTot = parts.reduce((a, p) => a + p.tot, 0), sumDone = parts.reduce((a, p) => a + p.done, 0); const allPct = sumTot ? Math.floor(100 * sumDone / sumTot) : 0; const left = sumTot - sumDone;
   const mins = Math.ceil(left * 5 / 60); const eta = mins >= 60 ? (mins / 60).toFixed(1).replace('.', ',') + ' jam' : mins + ' mnt';
@@ -218,9 +219,11 @@ function renderDecks() {
   if (!DATA[lv]) { $app.innerHTML = '<div class="spin"></div>'; getData(lv).then(render); return; }
   $app.innerHTML = `<div class="screen">
     <p class="brand">みんなの復習</p><h1 class="largeTitle">Flashcard</h1><p class="sub">Semua kartu dikelompokkan per level.</p>
-    <div class="seg" id="lvs" style="margin-bottom:18px">${LEVELS.map(l => `<button data-l="${l}" class="${l === lv ? 'on' : ''}">${l}</button>`).join('')}</div>
-    ${['k', 'j', 'b'].map(dk => { const D = DECKS[dk], s = deckStats(lv, dk); return `<button class="card deck" data-deck="${dk}">
-      <div class="row"><div class="tico ${D.cls}">${D.ico}</div><div style="flex:1"><div class="tt">${D.name}</div><div class="ts">${esc(LEVEL_NAME[lv])} · ${s.n} ${D.unit}</div></div><span class="chev">${I.chev}</span></div>
+    <div class="seg" id="lvs" style="margin-bottom:16px">${LEVELS.map(l => `<button data-l="${l}" class="${l === lv ? 'on' : ''}">${l}</button>`).join('')}</div>
+    ${(() => { const t = ['k', 'j', 'b'].map(dk => deckStats(lv, dk)); const n = t.reduce((a, x) => a + x.n, 0), m = t.reduce((a, x) => a + x.m, 0); const pc = n ? Math.floor(100 * m / n) : 0;
+      return `<div class="lvsum"><div><small>${esc(LEVEL_NAME[lv])}</small><b>${m.toLocaleString('id-ID')} <span>dari ${n.toLocaleString('id-ID')} kartu hafal</span></b></div><div class="lvpct">${pc}%</div><div class="mbar"><i style="width:${pc}%"></i></div></div>`; })()}
+    ${['k', 'j', 'b'].map(dk => { const D = DECKS[dk], s = deckStats(lv, dk); const pc = s.n ? Math.floor(100 * s.m / s.n) : 0; return `<button class="card deck dk-${dk}" data-deck="${dk}">
+      <div class="row"><div class="tico ${D.cls}">${D.ico}</div><div style="flex:1;min-width:0"><div class="tt">${D.name} <span class="jp djp">${D.jp}</span></div><div class="ts">${s.n.toLocaleString('id-ID')} ${D.unit} · ${pc}% hafal</div></div><span class="chev">${I.chev}</span></div>
       <div class="mini"><i style="width:${s.n ? 100 * s.m / s.n : 0}%"></i></div>
       <div class="stats3"><div><b style="color:var(--green)">${s.m}</b><small>Hafal</small></div><div><b style="color:var(--orange)">${s.l}</b><small>Belum hafal</small></div><div><b>${s.nw}</b><small>Baru</small></div></div>
     </button>`; }).join('')}
@@ -309,7 +312,7 @@ function startStudy(lv, dk, idx, opt = {}) {
   const el = document.createElement('div'); el.className = 'study'; el.id = 'study'; document.body.appendChild(el); document.body.style.overflow = 'hidden';
   drawStudy();
 }
-function closeStudy() { document.getElementById('study')?.remove(); document.body.style.overflow = ''; if (window.AndroidTTS) { try { AndroidTTS.stop(); } catch {} } else if ('speechSynthesis' in window) speechSynthesis.cancel(); ST = null; render(); }
+function closeStudy() { document.getElementById('study')?.remove(); document.querySelectorAll('.confetti').forEach(x => x.remove()); document.body.style.overflow = ''; if (window.AndroidTTS) { try { AndroidTTS.stop(); } catch {} } else if ('speechSynthesis' in window) speechSynthesis.cancel(); ST = null; render(); }
 function jpSize(t) { const n = [...String(t).replace(/[（(][^）)]*[）)]/g, '')].length; return n <= 2 ? 'xl' : n <= 4 ? 'l' : n <= 7 ? 'm' : n <= 12 ? 's' : 'xs'; }
 function patHTML(p) { return esc(p).replace(/(^|[^A-Za-z])(N[12]?|S[12]?|V|イA|ナA)(?![a-z])/g, '$1<b class="sym">$2</b>'); }
 function faceHTML(c, side) {
@@ -414,7 +417,7 @@ function answer(ok, swiped) {
 }
 function undo() {
   if (!ST || !ST.hist.length) return;
-  const h = ST.hist.pop(); ST.i--;
+  const h = ST.hist.pop(); ST.i--; ST.shown = -1;
   if (h.prev) S.cards[h.k] = h.prev; else delete S.cards[h.k];
   if (h.ok) ST.yes--; else { ST.no--; ST.missed.pop(); }
   const r = dayRec(); r.n = Math.max(0, (r.n || 1) - 1); if (r.c && r.c[ST.dk]) r.c[ST.dk]--;
@@ -429,24 +432,34 @@ function recordProgress(silent) {
   r.last = Date.now(); save(); queueSync();
 }
 function drawDone() {
+  if (ST.shown === ST.i) return; ST.shown = ST.i;
   recordProgress(); const el = document.getElementById('study'); const tot = ST.idx.length; const pct = Math.round(100 * ST.yes / tot);
   const all = ST.daily && allDone(todayKey());
-  el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq">${I.x}</button></div>
-    <div class="finish"><div class="emoji">${pct >= 80 ? '🎐' : pct >= 50 ? '✨' : '💪'}</div>
-    <h2 class="jp">${pct >= 80 ? 'よくできました！' : pct >= 50 ? 'いいですね！' : 'がんばって！'}</h2>
-    <p>${ST.yes} hafal · ${ST.no} belum hafal dari ${tot} kartu</p>
-    ${all ? '<p style="color:var(--green);font-weight:800">Semua tugas hari ini selesai! 🔥</p>' : ''}
-    <div style="display:grid;gap:10px;width:100%;max-width:360px">
-      ${ST.missed.length ? `<button class="btn primary" id="again">Ulangi ${ST.missed.length} yang belum hafal</button>` : ''}
-      <button class="btn ${ST.missed.length ? 'ghost' : 'primary'}" id="fin">Selesai</button>
-      <button class="btn ghost" id="undo2">↶ Kembali ke kartu terakhir</button></div></div>`;
-  confetti(pct >= 50 || all);
+  const next = ST.daily && !all ? todayParts(ST.lv).find(p => p.dk !== ST.dk && p.tot && p.done < p.tot) : null;
+  const secs = Math.round((Date.now() - ST.t0) / 1000); const dur = secs >= 60 ? Math.round(secs / 60) + ' mnt' : secs + ' dtk';
+  const C = 2 * Math.PI * 52;
+  el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq">${I.x}</button><div class="sthead"><div class="sttitle">${esc(ST.title)}</div></div></div>
+    <div class="finish">
+      <div class="fring"><svg width="132" height="132" viewBox="0 0 132 132"><circle cx="66" cy="66" r="52" stroke="var(--fill)" stroke-width="12" fill="none"/>
+        <circle cx="66" cy="66" r="52" stroke="url(#fg)" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}"/>
+        <defs><linearGradient id="fg"><stop offset="0" stop-color="#40d2c6"/><stop offset="1" stop-color="#087f86"/></linearGradient></defs></svg><div><b>${pct}%</b><small>hafal</small></div></div>
+      <h2 class="jp">${pct >= 80 ? 'よくできました！' : pct >= 50 ? 'いいですね！' : 'がんばって！'}</h2>
+      <p>${pct >= 100 ? 'Sempurna, semua kartu sudah hafal.' : pct >= 80 ? 'Hebat, hampir semua sudah hafal.' : pct >= 50 ? 'Bagus, tinggal sedikit lagi.' : 'Tidak apa-apa, ulangi yang belum hafal ya.'}</p>
+      <div class="stats3 fstats"><div><b style="color:var(--green)">${ST.yes}</b><small>Hafal</small></div><div><b style="color:var(--orange)">${ST.no}</b><small>Belum hafal</small></div><div><b>${dur}</b><small>Waktu</small></div></div>
+      ${all ? '<div class="alldone">🔥 Semua tugas hari ini selesai! Streak bertambah.</div>' : ''}
+      <div class="factions">
+        ${next ? `<button class="btn primary" id="nxt">Lanjut ke ${DECKS[next.dk].name} →</button>` : ''}
+        ${ST.missed.length ? `<button class="btn ${next ? 'ghost' : 'primary'}" id="again">Ulangi ${ST.missed.length} yang belum hafal</button>` : ''}
+        <button class="btn ${next || ST.missed.length ? 'ghost' : 'primary'}" id="fin">Kembali ke beranda</button>
+        <button class="linkbtn" id="undo2">↶ Kembali ke kartu terakhir</button></div></div>`;
+  confetti(pct >= 80 || all);
   document.getElementById('xq').onclick = document.getElementById('fin').onclick = () => { queueSync(true); closeStudy(); };
-  document.getElementById('undo2').onclick = undo;
-  const ag = document.getElementById('again'); if (ag) ag.onclick = () => { const m = ST.missed.slice(); const { lv, dk, title } = ST; el.remove(); ST = null; startStudy(lv, dk, shuffle(m), { title }); };
+  document.getElementById('undo2').onclick = () => { document.querySelectorAll('.confetti').forEach(x => x.remove()); undo(); };
+  const nx = document.getElementById('nxt'); if (nx) nx.onclick = () => { queueSync(true); const lv = ST.lv; closeStudy(); const b = document.querySelector(`[data-task="${next.dk}"]`); if (b) b.click(); };
+  const ag = document.getElementById('again'); if (ag) ag.onclick = () => { const m = ST.missed.slice(); const { lv, dk, title } = ST; el.remove(); ST = null; document.querySelectorAll('.confetti').forEach(x => x.remove()); startStudy(lv, dk, shuffle(m), { title }); };
 }
 function confetti(big) {
-  if (!big) return; const c = document.createElement('div'); c.className = 'confetti';
+  if (!big) return; document.querySelectorAll('.confetti').forEach(x => x.remove()); const c = document.createElement('div'); c.className = 'confetti';
   const cols = ['#0aa39c', '#40d2c6', '#087f86', '#9be8df', '#ffffff', '#1596bf'];
   for (let i = 0; i < 36; i++) { const p = document.createElement('i'); p.style.left = Math.random() * 100 + 'vw'; p.style.background = cols[i % cols.length]; p.style.animationDuration = 1.8 + Math.random() * 1.8 + 's'; p.style.animationDelay = Math.random() * .4 + 's'; p.style.transform = `rotate(${Math.random() * 360}deg)`; c.appendChild(p); }
   document.body.appendChild(c); setTimeout(() => c.remove(), 4200);
