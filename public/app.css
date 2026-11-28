@@ -229,3 +229,32 @@ details.exp[open] summary{margin-bottom:6px}
 .babs button small{font-size:11px;font-weight:600;color:var(--ink3)}
 .babs button:active{transform:scale(.95)}
 .btn.danger{color:#e5484d}
+
+/* mission hero */
+.mission{position:relative;overflow:hidden;border-radius:26px;padding:20px 20px 18px;color:#fff;
+  background:linear-gradient(150deg,#3fcfc3 0%,#0aa39c 45%,#06646d 100%);box-shadow:0 14px 30px rgba(6,100,109,.28)}
+.mission::after{content:"";position:absolute;right:-30px;bottom:-40px;width:220px;height:140px;opacity:.16;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='20' viewBox='0 0 40 20'%3E%3Cg fill='none' stroke='%23fff'%3E%3Cpath d='M0 20a20 20 0 0 1 40 0M6 20a14 14 0 0 1 28 0M12 20a8 8 0 0 1 16 0M-20 10a20 20 0 0 1 40 0M20 10a20 20 0 0 1 40 0'/%3E%3C/g%3E%3C/svg%3E")}
+.mtop{display:flex;justify-content:space-between;align-items:center}
+.mlabel{font-size:11.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.85}
+.mlv{font-weight:800;font-size:13px;background:rgba(255,255,255,.2);padding:4px 12px;border-radius:99px}
+.mission h2{margin:10px 0 4px;font-size:24px;font-weight:800;letter-spacing:-.01em;line-height:1.25}
+.mission p{margin:0;font-size:14px;line-height:1.5;opacity:.9}
+.mbar{height:10px;border-radius:9px;background:rgba(255,255,255,.22);overflow:hidden;margin:16px 0 14px}
+.mbar i{display:block;height:100%;border-radius:9px;background:#fff;min-width:4px}
+.mstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mstats div{background:rgba(255,255,255,.14);border-radius:14px;padding:10px 8px;text-align:center}
+.mstats b{display:block;font-size:17px;font-weight:800}
+.mstats small{display:block;font-size:11px;opacity:.85;margin-top:2px}
+.task.t2{align-items:flex-start}
+.task.t2 .tico{margin-top:2px}.task.t2 .check{margin-top:12px}
+.task .ts b{color:var(--ink);font-weight:800}
+.task .go{margin-top:10px;font-size:13.5px;font-weight:800;color:var(--deep)}
+.task.dk-j .mini i{background:linear-gradient(90deg,#6aa6e0,var(--violet))}.task.dk-b .mini i{background:linear-gradient(90deg,#5fd0ef,var(--blue))}
+.task.dk-j .go{color:var(--violet)}.task.dk-b .go{color:var(--blue)}
+.cfgmode{display:grid;gap:8px;margin:12px 0}
+.cfgmode label{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1.5px solid var(--line);border-radius:14px;cursor:pointer}
+.cfgmode label:has(input:checked){border-color:var(--accent);background:var(--accentSoft)}
+.cfgmode input{margin-top:3px;accent-color:var(--accent)}
+.cfgmode b{display:block}.cfgmode small{color:var(--ink2);font-size:13px}
+.mission>*{position:relative;z-index:1}.mission::after{z-index:0}

@@ -14,6 +14,6 @@ module.exports = async (req, res) => {
   try {
     const [docs, config] = await Promise.all([L.listJSON('students/'), L.readJSON('config.json')]);
     const students = docs.map(({ token, ...s }) => s);
-    return L.send(res, 200, { students, config: config || L.DEFAULT_CONFIG, now: Date.now() });
+    return L.send(res, 200, { students, config: config ? { mode: config.mode || 'level', daily: config.daily || L.DEFAULT_CONFIG.daily } : L.DEFAULT_CONFIG, now: Date.now() });
   } catch (e) { console.error(e); return L.send(res, 500, { error: 'Gagal memuat data siswa.' }); }
 };

@@ -2,7 +2,7 @@ const { put, head, list, del, BlobNotFoundError } = require('@vercel/blob');
 const crypto = require('crypto');
 
 const SECRET = process.env.APP_SECRET || process.env.ADMIN_PASSWORD || 'minna';
-const DEFAULT_CONFIG = { daily: { k: 20, j: 10, b: 5 } };
+const DEFAULT_CONFIG = { mode: 'level', daily: { k: 20, j: 10, b: 5 } };
 
 const hkey = s => crypto.createHmac('sha256', SECRET).update(String(s)).digest('hex').slice(0, 40);
 const rid = () => crypto.randomBytes(16).toString('hex');

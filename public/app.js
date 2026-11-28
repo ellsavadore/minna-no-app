@@ -34,9 +34,10 @@ async function api(path, body, headers = {}) {
   if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
   return j;
 }
-let CONFIG = { daily: { k: 20, j: 10, b: 5 } };
+let CONFIG = { mode: 'level', daily: { k: 20, j: 10, b: 5 } };
+const fullLevel = () => (CONFIG.mode || 'level') === 'level';
 try { const cc = JSON.parse(localStorage.getItem('mna.cfg')); if (cc && cc.daily) CONFIG = cc; } catch {}
-api('config').then(c => { if (c && c.daily) { const changed = JSON.stringify(c.daily) !== JSON.stringify(CONFIG.daily); CONFIG = c; try { localStorage.setItem('mna.cfg', JSON.stringify(c)); } catch {} if (changed && route === 'home') render(); } }).catch(() => {});
+api('config').then(c => { if (c && c.daily) { c.mode = c.mode || 'level'; const changed = JSON.stringify(c.daily) !== JSON.stringify(CONFIG.daily) || c.mode !== CONFIG.mode; CONFIG = c; try { localStorage.setItem('mna.cfg', JSON.stringify(c)); } catch {} if (changed && route === 'home') render(); } }).catch(() => {});
 
 let syncTimer;
 function queueSync(now) { clearTimeout(syncTimer); syncTimer = setTimeout(sync, now ? 10 : 1500); }
@@ -68,9 +69,10 @@ function card(lv, dk, i) {
 /* ---------- daily task ---------- */
 function dailySet(lv) {
   const t = todayKey(); const key = t + '|' + lv;
-  const cfg = CONFIG.daily;
-  if (S.daily.key === key && S.daily.cfg === JSON.stringify(cfg)) return S.daily.sets;
+  const cfg = CONFIG.daily; const cfgKey = (CONFIG.mode || 'level') + JSON.stringify(cfg);
+  if (S.daily.key === key && S.daily.cfg === cfgKey) return S.daily.sets;
   const d = DATA[lv]; const sets = {};
+  if (fullLevel()) { for (const dk of ['k', 'j', 'b']) sets[dk] = [...Array(d[dk].length).keys()]; S.daily = { key, sets, cfg: cfgKey }; save(); return sets; }
   for (const dk of ['k', 'j', 'b']) {
     const n = Math.min(cfg[dk] || 0, d[dk].length); const pick = [];
     const learning = []; for (let i = 0; i < d[dk].length; i++) { const c = S.cards[lv + '|' + dk + '|' + i]; if (c && c.s === 0) learning.push([c.t, i]); }
@@ -81,7 +83,7 @@ function dailySet(lv) {
     S.ptr[lv + '|' + dk] = p % d[dk].length;
     sets[dk] = pick;
   }
-  S.daily = { key, sets, cfg: JSON.stringify(cfg) }; save();
+  S.daily = { key, sets, cfg: cfgKey }; save();
   return sets;
 }
 function dayRec(k = todayKey()) { return (S.days[k] ||= {}); }
@@ -173,33 +175,35 @@ function greetWord() { const h = new Date().getHours(); return h < 11 ? 'おは�
 function renderHome() {
   const lv = S.user.level; const sets = dailySet(lv); const rec = dayRec();
   const parts = ['k', 'j', 'b'].map(dk => { const tot = sets[dk].length; const done = Math.min(rec[dk] ? rec[dk][0] : 0, tot); return { dk, tot, done }; });
-  const pct = Math.round(100 * parts.reduce((a, p) => a + (p.tot ? p.done / p.tot : 1), 0) / 3);
-  const C = 2 * Math.PI * 42; const st = streak();
+  const pct = parts.every(p => p.tot && p.done >= p.tot) ? 100 : 0;
+  const st = streak(); const sumTot = parts.reduce((a, p) => a + p.tot, 0), sumDone = parts.reduce((a, p) => a + p.done, 0); const allPct = sumTot ? Math.floor(100 * sumDone / sumTot) : 0; const left = sumTot - sumDone;
+  const mins = Math.ceil(left * 5 / 60); const eta = mins >= 60 ? (mins / 60).toFixed(1).replace('.', ',') + ' jam' : mins + ' mnt';
   const days = []; for (let i = 6; i >= 0; i--) days.push(dayShift(todayKey(), -i));
   const dn = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
   $app.innerHTML = `<div class="screen">
     <div class="greet"><div class="avatar">${esc(S.user.name[0].toUpperCase())}</div>
       <div><div class="hi jp">${greetWord()},</div><div class="nm">${esc(S.user.name.split(' ')[0])}</div></div><div class="spacer"></div>
       <div class="streak">🔥 ${st}</div></div>
-    <div class="card today">
-      <div class="ring"><svg width="96" height="96"><circle cx="48" cy="48" r="42" stroke="var(--fill)" stroke-width="10" fill="none"/>
-        <circle cx="48" cy="48" r="42" stroke="url(#g)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct / 100)}" style="transition:stroke-dashoffset .8s"/>
-        <defs><linearGradient id="g"><stop offset="0" stop-color="#40d2c6"/><stop offset="1" stop-color="#087f86"/></linearGradient></defs></svg><b>${pct}%</b></div>
-      <div><h3>${pct >= 100 ? 'Tugas hari ini selesai' : 'Fukushu Hari Ini'}</h3>
-      <p>${pct >= 100 ? 'すごい！ Kamu hebat. Sampai jumpa besok ya.' : 'Selesaikan Kotoba, Kanji, dan Pola Kalimat untuk menjaga streak 🔥'}</p>
-      <p style="margin-top:6px"><span class="pill p">${esc(LEVEL_NAME[lv])}</span></p></div>
+    <div class="mission">
+      <div class="mtop"><span class="mlabel">${fullLevel() ? 'Misi Hari Ini' : 'Target Hari Ini'}</span><span class="mlv">${esc(lv)}</span></div>
+      <h2>${pct >= 100 ? 'お疲れさまでした！' : fullLevel() ? 'Tamatkan ' + esc(lv) + ' hari ini' : 'Fukushu hari ini'}</h2>
+      <p>${pct >= 100 ? 'Semua kotoba, kanji, dan pola ' + esc(lv) + ' sudah selesai. すごい！' : fullLevel() ? 'Selesaikan semua kotoba, kanji, dan pola kalimat ' + esc(LEVEL_NAME[lv]) + '.' : 'Selesaikan Kotoba, Kanji, dan Pola Kalimat untuk menjaga streak.'}</p>
+      <div class="mbar"><i style="width:${allPct}%"></i></div>
+      <div class="mstats"><div><b>${allPct}%</b><small>selesai</small></div><div><b>${sumDone.toLocaleString('id-ID')}</b><small>dari ${sumTot.toLocaleString('id-ID')} kartu</small></div><div><b>${left > 0 ? eta : '✓'}</b><small>${left > 0 ? 'perkiraan sisa' : 'tuntas'}</small></div></div>
     </div>
     <div class="section">Tugas Hari Ini</div>
-    ${parts.map(p => { const D = DECKS[p.dk]; const ok = p.tot > 0 && p.done >= p.tot; return `<button class="card task ${ok ? 'complete' : ''}" data-task="${p.dk}">
+    ${parts.map(p => { const D = DECKS[p.dk]; const ok = p.tot > 0 && p.done >= p.tot; const pp = p.tot ? Math.round(100 * p.done / p.tot) : 0; return `<button class="card task t2 dk-${p.dk} ${ok ? 'complete' : ''}" data-task="${p.dk}">
       <div class="tico ${D.cls}">${D.ico}</div>
       <div style="flex:1;min-width:0"><div class="tt">${D.name} <span class="jp" style="color:var(--ink3);font-weight:500;font-size:14px">${D.jp}</span></div>
-      <div class="ts">${ok ? '<span class="donepill">完了 · Selesai</span> ' + p.tot + ' kartu' : p.done + ' / ' + p.tot + ' kartu'}</div>
-      <div class="mini"><i style="width:${p.tot ? 100 * p.done / p.tot : 0}%"></i></div></div>
+      <div class="ts">${ok ? '<span class="donepill">完了 · Selesai</span> ' + p.tot.toLocaleString('id-ID') + ' kartu' : '<b>' + p.done.toLocaleString('id-ID') + '</b> / ' + p.tot.toLocaleString('id-ID') + ' ' + D.unit + ' · ' + pp + '%'}</div>
+      <div class="mini"><i style="width:${pp}%"></i></div>
+      ${ok ? '' : `<div class="go">${p.done ? 'Lanjutkan dari kartu ' + (p.done + 1).toLocaleString('id-ID') : 'Mulai'} →</div>`}</div>
       <div class="check ${ok ? 'ok' : ''}">${ok ? I.check : ''}</div></button>`; }).join('')}
     <div class="section">7 Hari Terakhir</div>
     <div class="card week">${days.map(d => { const full = allDone(d), part = anyDone(d); return `<div class="${d === todayKey() ? 'tdy' : ''}"><i class="${full ? 'full' : part ? 'part' : ''}">${full ? '✓' : part ? '•' : ''}</i>${dn[new Date(d + 'T12:00:00').getDay()]}</div>`; }).join('')}</div>
   </div>`;
-  $app.querySelectorAll('[data-task]').forEach(b => b.onclick = () => { const dk = b.dataset.task; startStudy(lv, dk, sets[dk].slice(), { daily: true, title: 'Tugas ' + DECKS[dk].name }); });
+  $app.querySelectorAll('[data-task]').forEach(b => b.onclick = () => { const dk = b.dataset.task; const p = parts.find(x => x.dk === dk); const from = p.done < p.tot ? p.done : 0;
+    startStudy(lv, dk, sets[dk].slice(from), { daily: true, offset: from, total: p.tot, title: 'Tugas ' + DECKS[dk].name + ' ' + lv }); });
 }
 
 /* ---------- decks ---------- */
@@ -301,7 +305,7 @@ function renderMe() {
 let ST = null;
 function startStudy(lv, dk, idx, opt = {}) {
   if (!idx.length) return toast('Tidak ada kartu di sini.');
-  ST = { lv, dk, idx, i: 0, yes: 0, no: 0, missed: [], hist: [], daily: !!opt.daily, title: opt.title || '', t0: Date.now(), flipped: false };
+  ST = { lv, dk, idx, off: opt.offset || 0, all: opt.total || idx.length, i: 0, yes: 0, no: 0, missed: [], hist: [], daily: !!opt.daily, title: opt.title || '', t0: Date.now(), flipped: false };
   const el = document.createElement('div'); el.className = 'study'; el.id = 'study'; document.body.appendChild(el); document.body.style.overflow = 'hidden';
   drawStudy();
 }
@@ -333,8 +337,8 @@ function drawStudy() {
   const c = card(ST.lv, ST.dk, ST.idx[ST.i]); ST.flipped = false;
   const D = DECKS[ST.dk];
   el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq" aria-label="Tutup">${I.x}</button>
-      <div class="sthead"><div class="sttitle">${esc(ST.title)}</div><div class="pbar"><i style="width:${100 * ST.i / total}%"></i></div></div>
-      <div class="counter"><b>${ST.i + 1}</b>/${total}</div><button class="iconbtn undo" id="bu" aria-label="Undo" ${ST.hist.length ? '' : 'disabled'}>${I.undo}</button></div>
+      <div class="sthead"><div class="sttitle">${esc(ST.title)}</div><div class="pbar"><i style="width:${100 * (ST.off + ST.i) / ST.all}%"></i></div></div>
+      <div class="counter"><b>${ST.off + ST.i + 1}</b>/${ST.all}</div><button class="iconbtn undo" id="bu" aria-label="Undo" ${ST.hist.length ? '' : 'disabled'}>${I.undo}</button></div>
     <div class="tally"><span class="l">✕ ${ST.no}</span><span class="r">✓ ${ST.yes}</span></div>
     <div class="stage"><span class="stamp l">BELUM</span><span class="stamp r">HAFAL</span><div class="fc enter dk-${ST.dk}" id="fc">
       <div class="face"><button class="iconbtn say" data-say aria-label="Dengarkan">${I.spk}</button>
@@ -414,13 +418,13 @@ function undo() {
   if (h.prev) S.cards[h.k] = h.prev; else delete S.cards[h.k];
   if (h.ok) ST.yes--; else { ST.no--; ST.missed.pop(); }
   const r = dayRec(); r.n = Math.max(0, (r.n || 1) - 1); if (r.c && r.c[ST.dk]) r.c[ST.dk]--;
-  if (ST.daily && r[ST.dk]) r[ST.dk][0] = Math.min(r[ST.dk][0], ST.i);
+  if (ST.daily && r[ST.dk]) r[ST.dk][0] = Math.min(r[ST.dk][0], ST.off + ST.i);
   save(); queueSync(); if (navigator.vibrate) navigator.vibrate(5);
   drawStudy(); toast('Kartu sebelumnya dikembalikan');
 }
 function recordProgress(silent) {
   if (!ST) return; const r = dayRec();
-  if (ST.daily) { const tot = ST.idx.length; const prev = r[ST.dk] ? r[ST.dk][0] : 0; r[ST.dk] = [Math.max(prev, Math.min(ST.i, tot)), tot]; }
+  if (ST.daily) { const tot = ST.all; const prev = r[ST.dk] ? r[ST.dk][0] : 0; r[ST.dk] = [Math.max(prev, Math.min(ST.off + ST.i, tot)), tot]; }
   r.ms = (r.ms || 0) + (silent ? 0 : Date.now() - ST.t0); if (!silent) ST.t0 = Date.now();
   r.last = Date.now(); save(); queueSync();
 }
@@ -478,10 +482,10 @@ async function renderAdmin() {
     <div class="row"><h1 class="largeTitle" style="flex:1">Monitoring</h1><button class="iconbtn" id="cfg" aria-label="Pengaturan">${I.gear}</button><button class="iconbtn" id="lo" aria-label="Keluar">${I.x}</button></div>
     <div class="row" style="margin:0 0 16px"><button class="iconbtn" id="pd">‹</button><div style="flex:1;text-align:center;font-weight:700">${isToday ? 'Hari ini · ' : ''}${new Date(adDay + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</div><button class="iconbtn" id="nd" ${isToday ? 'disabled style="opacity:.3"' : ''}>›</button></div>
     <div class="tiles"><div class="card tile"><b>${all}</b><small>Siswa terdaftar</small></div><div class="card tile"><b style="color:var(--accent)">${active}</b><small>Belajar ${isToday ? 'hari ini' : ''}</small></div><div class="card tile"><b style="color:var(--green)">${full}</b><small>Tugas lengkap</small></div></div>
-    <div class="section">Siswa · target ${cfg.k} kotoba, ${cfg.j} kanji, ${cfg.b} pola/hari</div>
+    <div class="section">Siswa · target ${(AD.config?.mode || 'level') === 'level' ? 'tamat 1 level/hari' : cfg.k + ' kotoba, ' + cfg.j + ' kanji, ' + cfg.b + ' pola/hari'}</div>
     <input class="search" id="q" placeholder="Cari nama atau email" value="${esc(adQ)}">
     <div class="card list">${st.length ? st.map(s => `<button class="li" data-sid="${esc(s.id)}"><div class="avatar" style="width:40px;height:40px;font-size:15px">${esc((s.name || '?')[0].toUpperCase())}</div>
-      <div style="flex:1;min-width:0"><div class="tt">${esc(s.name)}</div><div class="ts" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.level || '')} · ${s.lastSeen ? 'aktif ' + ago(s.lastSeen) : 'belum aktif'}</div></div>
+      <div style="flex:1;min-width:0"><div class="tt">${esc(s.name)}</div><div class="ts" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.level || '')} · ${lvPct(s.d)}% hari ini · ${s.lastSeen ? 'aktif ' + ago(s.lastSeen) : 'belum aktif'}</div></div>
       <div class="dots">${['k', 'j', 'b'].map(k => `<span class="dot ${s.done.includes(k) ? 'on' : ''}" title="${DECKS[k].name}">${DECKS[k].ico}</span>`).join('')}</div></button>`).join('') : '<div class="empty">Belum ada siswa yang cocok.</div>'}</div>
     <div class="row" style="margin-top:16px;gap:10px"><button class="btn ghost" id="rf">Muat ulang</button><button class="btn ghost" id="csv">Unduh CSV</button></div>
   </div>`;
@@ -508,7 +512,7 @@ function studentSheet(s) {
     <div class="section" style="margin-left:2px">Kartu hafal (${esc(lv)})</div>
     ${['k', 'j', 'b'].map(k => `<div class="optrow"><span>${DECKS[k].name}</span><b>${m[k] || 0} / ${tot[k] || '–'}</b></div>`).join('')}
     <div class="section" style="margin-left:2px">Riwayat</div>
-    ${days.slice().reverse().filter(d => (s.days || {})[d]).slice(0, 10).map(d => { const r = s.days[d]; return `<div class="optrow"><span>${new Date(d + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</span><span style="color:var(--ink2);font-size:14px">${r.n || 0} kartu · ${Math.round((r.ms || 0) / 60000)} mnt · ${['k', 'j', 'b'].map(k => (r[k] && r[k][0] >= r[k][1] && r[k][1] ? '✓' : '·') + DECKS[k].ico).join(' ')}</span></div>`; }).join('') || '<div class="empty">Belum ada aktivitas.</div>'}
+    ${days.slice().reverse().filter(d => (s.days || {})[d]).slice(0, 10).map(d => { const r = s.days[d]; return `<div class="optrow"><span>${new Date(d + 'T12:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</span><span style="color:var(--ink2);font-size:14px">${r.n || 0} kartu · ${Math.round((r.ms || 0) / 60000)} mnt · ${lvPct(r)}% · ${['k', 'j', 'b'].map(k => DECKS[k].ico + ' ' + (r[k] ? r[k][0] + '/' + r[k][1] : '0')).join('  ')}</span></div>`; }).join('') || '<div class="empty">Belum ada aktivitas.</div>'}
     <button class="btn ghost" style="margin-top:14px" data-close>Tutup</button>
     <button class="btn ghost" style="margin-top:10px;color:#e5484d" data-del>Hapus siswa ini</button></div>`;
   document.body.appendChild(bg); bg.onclick = async e => {
@@ -518,14 +522,22 @@ function studentSheet(s) {
     }
   };
 }
+function lvPct(r) { let d = 0, t = 0; for (const k of ['k', 'j', 'b']) if (r && r[k] && r[k][1]) { d += Math.min(r[k][0], r[k][1]); t += r[k][1]; } return t ? Math.floor(100 * d / t) : 0; }
 function configSheet(cfg) {
+  const mode = (AD.config && AD.config.mode) || 'level';
   const bg = document.createElement('div'); bg.className = 'sheetBg';
-  bg.innerHTML = `<form class="sheet" id="cf"><div class="grab"></div><h3>Target Harian</h3><p class="sub">Jumlah kartu yang wajib diselesaikan siswa setiap hari.</p>
-    ${['k', 'j', 'b'].map(k => `<label class="field"><span>${DECKS[k].name}</span><input class="input" type="number" min="1" max="500" name="${k}" value="${cfg[k]}"></label>`).join('')}
+  bg.innerHTML = `<form class="sheet" id="cf"><div class="grab"></div><h3>Target Harian</h3><p class="sub">Apa yang wajib diselesaikan siswa setiap hari.</p>
+    <div class="cfgmode">
+      <label><input type="radio" name="mode" value="level" ${mode === 'level' ? 'checked' : ''}><span><b>Tamat 1 level per hari</b><small>Semua kotoba, kanji, dan pola kalimat di level siswa (A1, A2.1, atau A2.2).</small></span></label>
+      <label><input type="radio" name="mode" value="count" ${mode === 'count' ? 'checked' : ''}><span><b>Jumlah kartu tertentu</b><small>Isi jumlah per kategori di bawah.</small></span></label>
+    </div>
+    <div id="cnums">${['k', 'j', 'b'].map(k => `<label class="field"><span>${DECKS[k].name}</span><input class="input" type="number" min="1" max="500" name="${k}" value="${cfg[k]}"></label>`).join('')}</div>
     <div class="err" id="cerr"></div><button class="btn primary">Simpan</button><button type="button" class="btn ghost" style="margin-top:10px" data-close>Batal</button></form>`;
   document.body.appendChild(bg); bg.onclick = e => { if (e.target === bg || e.target.closest('[data-close]')) bg.remove(); };
-  bg.querySelector('#cf').onsubmit = async e => { e.preventDefault(); const f = new FormData(e.target); const daily = { k: +f.get('k'), j: +f.get('j'), b: +f.get('b') };
-    try { await api('config', { daily }, { 'x-admin-pass': adminPass() }); AD.config = { daily }; CONFIG = { daily }; bg.remove(); toast('Target harian disimpan'); renderAdmin(); } catch (err) { bg.querySelector('#cerr').textContent = err.message; } };
+  const nums = bg.querySelector('#cnums'); const sync = () => { nums.style.display = bg.querySelector('input[name=mode]:checked').value === 'count' ? '' : 'none'; };
+  bg.querySelectorAll('input[name=mode]').forEach(r => r.onchange = sync); sync();
+  bg.querySelector('#cf').onsubmit = async e => { e.preventDefault(); const f = new FormData(e.target); const daily = { k: +f.get('k'), j: +f.get('j'), b: +f.get('b') }; const m = f.get('mode');
+    try { const c = await api('config', { mode: m, daily }, { 'x-admin-pass': adminPass() }); AD.config = c; CONFIG = c; bg.remove(); toast('Target harian disimpan'); renderAdmin(); } catch (err) { bg.querySelector('#cerr').textContent = err.message; } };
 }
 function exportCSV() {
   const days = []; for (let i = 13; i >= 0; i--) days.push(dayShift(todayKey(), -i));
