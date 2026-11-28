@@ -92,6 +92,7 @@ function anyDone(k) { const r = S.days[k]; return !!(r && (r.n || 0) > 0); }
 
 /* ---------- icons ---------- */
 const I = {
+  undo: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
   home: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2 2.8 10.6c-.5.4-.2 1.2.4 1.2H5v7.7c0 .8.7 1.5 1.5 1.5h3.7v-5.5h3.6V21h3.7c.8 0 1.5-.7 1.5-1.5v-7.7h1.8c.6 0 .9-.8.4-1.2Z"/></svg>',
   decks: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="6" width="14" height="15" rx="3"/><path d="M7 3.5h11a3 3 0 0 1 3 3V17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
   me: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4.2"/><path d="M3.8 20.2c.9-4 4.2-6.2 8.2-6.2s7.3 2.2 8.2 6.2c.1.5-.3.8-.8.8H4.6c-.5 0-.9-.3-.8-.8Z"/></svg>',
@@ -225,28 +226,42 @@ function renderDecks() {
 }
 function deckSheet(lv, dk) {
   const D = DECKS[dk], s = deckStats(lv, dk), n = s.n; const ptrKey = lv + '|' + dk + '|free'; const p = S.ptr[ptrKey] || 0;
+  const rows = DATA[lv][dk]; const babCount = {}; rows.forEach(x => { babCount[x[3]] = (babCount[x[3]] || 0) + 1; });
+  const babs = Object.keys(babCount).sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0));
   const bg = document.createElement('div'); bg.className = 'sheetBg';
   bg.innerHTML = `<div class="sheet" role="dialog"><div class="grab"></div>
     <div class="row" style="margin-bottom:8px"><div class="tico ${D.cls}">${D.ico}</div><div><h3>${D.name} ${esc(lv)}</h3><div class="sub" style="margin:0">${n} kartu · ${s.m} hafal</div></div></div>
     <div style="display:grid;gap:10px;margin:16px 0">
       <button class="btn primary" data-a="next">Lanjutkan · kartu ${Math.min(p + 1, n)}–${Math.min(p + 20, n)}</button>
       <button class="btn ghost" data-a="weak" ${s.l ? '' : 'disabled'}>Ulangi yang belum hafal (${s.l})</button>
+      <button class="btn ghost" data-a="known" ${s.m ? '' : 'disabled'}>Fukushu yang sudah hafal (${s.m})</button>
       <button class="btn ghost" data-a="rand">Acak 20 kartu</button>
       <button class="btn ghost" data-a="all">Semua kartu (${n})</button>
     </div>
+    <div class="section" style="margin:6px 2px 8px">Ulangi per Bab</div>
+    <div class="babs">${babs.map(b => `<button data-bab="${esc(b)}">Bab ${esc(b)}<small>${babCount[b]}</small></button>`).join('')}</div>
     <div class="optrow">Mulai dari arti (Indonesia → Jepang)<button class="switch ${S.prefs.reverse ? 'on' : ''}" data-p="reverse" aria-label="Balik arah"></button></div>
     <div class="optrow">Ucapkan otomatis (suara Jepang)<button class="switch ${S.prefs.auto ? 'on' : ''}" data-p="auto" aria-label="Suara otomatis"></button></div>
-    <button class="btn ghost" data-a="close" style="margin-top:10px">Tutup</button></div>`;
+    <button class="btn ghost" data-a="close" style="margin-top:10px">Tutup</button>
+    <button class="btn ghost danger" data-a="reset" style="margin-top:6px">Reset progres ${D.name} ${esc(lv)}</button></div>`;
   document.body.appendChild(bg);
   const close = () => bg.remove();
   bg.onclick = e => {
     if (e.target === bg) return close();
     const sw = e.target.closest('[data-p]'); if (sw) { S.prefs[sw.dataset.p] = !S.prefs[sw.dataset.p]; sw.classList.toggle('on'); save(); return; }
+    const bb = e.target.closest('[data-bab]');
+    if (bb) { const idx = []; rows.forEach((x, i) => { if (String(x[3]) === bb.dataset.bab) idx.push(i); }); close(); return startStudy(lv, dk, idx, { title: `${D.name} · Bab ${bb.dataset.bab}` }); }
     const a = e.target.closest('[data-a]')?.dataset.a; if (!a) return;
     if (a === 'close') return close();
+    if (a === 'reset') {
+      if (!confirm(`Reset semua progres ${D.name} ${lv}? Semua kartu akan kembali menjadi "Baru".`)) return;
+      for (let i = 0; i < n; i++) delete S.cards[lv + '|' + dk + '|' + i];
+      delete S.ptr[ptrKey]; delete S.ptr[lv + '|' + dk]; S.daily = {}; save(); queueSync(true); close(); render(); return toast('Progres sudah direset');
+    }
     let idx = [];
     if (a === 'next') { for (let i = 0; i < Math.min(20, n); i++) idx.push((p + i) % n); S.ptr[ptrKey] = (p + 20) >= n ? 0 : p + 20; save(); }
     if (a === 'weak') for (let i = 0; i < n; i++) { const c = S.cards[lv + '|' + dk + '|' + i]; if (c && c.s === 0) idx.push(i); }
+    if (a === 'known') { for (let i = 0; i < n; i++) { const c = S.cards[lv + '|' + dk + '|' + i]; if (c && c.s === 1) idx.push(i); } shuffle(idx); }
     if (a === 'rand') { const all = [...Array(n).keys()]; shuffle(all); idx = all.slice(0, 20); }
     if (a === 'all') idx = [...Array(n).keys()];
     close(); startStudy(lv, dk, idx, { title: D.name + ' ' + lv });
@@ -286,7 +301,7 @@ function renderMe() {
 let ST = null;
 function startStudy(lv, dk, idx, opt = {}) {
   if (!idx.length) return toast('Tidak ada kartu di sini.');
-  ST = { lv, dk, idx, i: 0, yes: 0, no: 0, missed: [], daily: !!opt.daily, title: opt.title || '', t0: Date.now(), flipped: false };
+  ST = { lv, dk, idx, i: 0, yes: 0, no: 0, missed: [], hist: [], daily: !!opt.daily, title: opt.title || '', t0: Date.now(), flipped: false };
   const el = document.createElement('div'); el.className = 'study'; el.id = 'study'; document.body.appendChild(el); document.body.style.overflow = 'hidden';
   drawStudy();
 }
@@ -319,7 +334,7 @@ function drawStudy() {
   const D = DECKS[ST.dk];
   el.innerHTML = `<div class="topbar"><button class="iconbtn" id="xq" aria-label="Tutup">${I.x}</button>
       <div class="sthead"><div class="sttitle">${esc(ST.title)}</div><div class="pbar"><i style="width:${100 * ST.i / total}%"></i></div></div>
-      <div class="counter"><b>${ST.i + 1}</b>/${total}</div></div>
+      <div class="counter"><b>${ST.i + 1}</b>/${total}</div><button class="iconbtn undo" id="bu" aria-label="Undo" ${ST.hist.length ? '' : 'disabled'}>${I.undo}</button></div>
     <div class="tally"><span class="l">✕ ${ST.no}</span><span class="r">✓ ${ST.yes}</span></div>
     <div class="stage"><span class="stamp l">BELUM</span><span class="stamp r">HAFAL</span><div class="fc enter dk-${ST.dk}" id="fc">
       <div class="face"><button class="iconbtn say" data-say aria-label="Dengarkan">${I.spk}</button>
@@ -341,6 +356,7 @@ function drawStudy() {
   el.querySelectorAll('[data-say]').forEach(b => b.onclick = e => { e.stopPropagation(); speak(sayText); });
   document.getElementById('xq').onclick = () => { if (ST.i > 0) recordProgress(); closeStudy(); };
   document.getElementById('bf').onclick = flip;
+  document.getElementById('bu').onclick = undo;
   document.getElementById('bn').onclick = () => { if (!busy) { busy = true; answer(false); } };
   document.getElementById('by').onclick = () => { if (!busy) { busy = true; answer(true); } };
   // swipe (touch + mouse) with direction lock, velocity and stamps
@@ -385,12 +401,22 @@ function drawStudy() {
 }
 function answer(ok, swiped) {
   if (!ST) return; const fc = document.getElementById('fc'); const i = ST.idx[ST.i];
-  const k = ST.lv + '|' + ST.dk + '|' + i; S.cards[k] = { s: ok ? 1 : 0, t: Date.now() };
+  const k = ST.lv + '|' + ST.dk + '|' + i; ST.hist.push({ k, prev: S.cards[k] || null, ok }); S.cards[k] = { s: ok ? 1 : 0, t: Date.now() };
   ok ? ST.yes++ : (ST.no++, ST.missed.push(i)); ST.i++;
   const r = dayRec(); r.n = (r.n || 0) + 1; r.c = r.c || {}; r.c[ST.dk] = (r.c[ST.dk] || 0) + 1; save();
   if (ST.daily) recordProgress(true);
   if (navigator.vibrate) navigator.vibrate(ok ? 8 : [6, 40, 6]);
   if (swiped) setTimeout(drawStudy, 240); else if (fc) { fc.style.transform = ''; fc.classList.add(ok ? 'fly-r' : 'fly-l'); setTimeout(drawStudy, 260); } else drawStudy();
+}
+function undo() {
+  if (!ST || !ST.hist.length) return;
+  const h = ST.hist.pop(); ST.i--;
+  if (h.prev) S.cards[h.k] = h.prev; else delete S.cards[h.k];
+  if (h.ok) ST.yes--; else { ST.no--; ST.missed.pop(); }
+  const r = dayRec(); r.n = Math.max(0, (r.n || 1) - 1); if (r.c && r.c[ST.dk]) r.c[ST.dk]--;
+  if (ST.daily && r[ST.dk]) r[ST.dk][0] = Math.min(r[ST.dk][0], ST.i);
+  save(); queueSync(); if (navigator.vibrate) navigator.vibrate(5);
+  drawStudy(); toast('Kartu sebelumnya dikembalikan');
 }
 function recordProgress(silent) {
   if (!ST) return; const r = dayRec();
@@ -408,9 +434,11 @@ function drawDone() {
     ${all ? '<p style="color:var(--green);font-weight:800">Semua tugas hari ini selesai! 🔥</p>' : ''}
     <div style="display:grid;gap:10px;width:100%;max-width:360px">
       ${ST.missed.length ? `<button class="btn primary" id="again">Ulangi ${ST.missed.length} yang belum hafal</button>` : ''}
-      <button class="btn ${ST.missed.length ? 'ghost' : 'primary'}" id="fin">Selesai</button></div></div>`;
+      <button class="btn ${ST.missed.length ? 'ghost' : 'primary'}" id="fin">Selesai</button>
+      <button class="btn ghost" id="undo2">↶ Kembali ke kartu terakhir</button></div></div>`;
   confetti(pct >= 50 || all);
   document.getElementById('xq').onclick = document.getElementById('fin').onclick = () => { queueSync(true); closeStudy(); };
+  document.getElementById('undo2').onclick = undo;
   const ag = document.getElementById('again'); if (ag) ag.onclick = () => { const m = ST.missed.slice(); const { lv, dk, title } = ST; el.remove(); ST = null; startStudy(lv, dk, shuffle(m), { title }); };
 }
 function confetti(big) {
@@ -422,6 +450,7 @@ function confetti(big) {
 document.addEventListener('keydown', e => {
   if (!ST || !document.getElementById('fc')) return;
   if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); document.getElementById('bf').click(); }
+  if (e.key === 'Backspace' || e.key === 'z') { e.preventDefault(); return undo(); }
   if (e.key === 'ArrowRight') answer(true); if (e.key === 'ArrowLeft') answer(false);
 });
 

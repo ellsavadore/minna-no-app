@@ -223,3 +223,9 @@ details.exp[open] summary{margin-bottom:6px}
 .apkcard{display:flex;align-items:center;gap:14px;padding:14px 16px;margin-top:22px;text-decoration:none;color:inherit}
 .apkcard b{display:block;font-size:16px}.apkcard small{display:block;color:var(--ink2);font-size:13px;margin-top:2px}.apkcard .chev{color:var(--ink3);font-size:24px}
 .apklink{display:block;text-align:center;margin:14px auto 0;font-weight:700;font-size:14px;color:var(--deep);text-decoration:none}
+.iconbtn.undo{color:var(--deep);background:var(--accentSoft)}.iconbtn.undo:disabled{opacity:.35}
+.babs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.babs button{min-width:66px;padding:8px 10px;border-radius:12px;background:var(--fill);font-weight:700;font-size:14px;color:var(--ink);display:flex;flex-direction:column;align-items:center;line-height:1.2}
+.babs button small{font-size:11px;font-weight:600;color:var(--ink3)}
+.babs button:active{transform:scale(.95)}
+.btn.danger{color:#e5484d}
